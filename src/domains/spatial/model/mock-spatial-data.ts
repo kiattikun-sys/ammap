@@ -52,6 +52,9 @@ export const MOCK_SPATIAL_GEOMETRIES: SpatialGeometry[] = [
   },
 ];
 
+const findGeometry = (id: string | null) =>
+  MOCK_SPATIAL_GEOMETRIES.find((g) => g.id === id)?.geojson ?? null;
+
 export const MOCK_SPATIAL_NODES: SpatialNode[] = [
   {
     id: "site-1",
@@ -60,6 +63,7 @@ export const MOCK_SPATIAL_NODES: SpatialNode[] = [
     name: "Main Site",
     type: "site",
     geometryId: null,
+    geometry: null,
     level: 0,
     order: 0,
     metadata: {},
@@ -73,6 +77,7 @@ export const MOCK_SPATIAL_NODES: SpatialNode[] = [
     name: "Main Building",
     type: "building",
     geometryId: null,
+    geometry: null,
     level: 1,
     order: 0,
     metadata: {},
@@ -86,6 +91,7 @@ export const MOCK_SPATIAL_NODES: SpatialNode[] = [
     name: "Zone A – North Wing",
     type: "zone",
     geometryId: "geom-z1",
+    geometry: findGeometry("geom-z1"),
     level: 2,
     order: 0,
     metadata: { color: "#3b82f6" },
@@ -99,6 +105,7 @@ export const MOCK_SPATIAL_NODES: SpatialNode[] = [
     name: "Zone B – South Wing",
     type: "zone",
     geometryId: "geom-z2",
+    geometry: findGeometry("geom-z2"),
     level: 2,
     order: 1,
     metadata: { color: "#10b981" },
@@ -112,6 +119,7 @@ export const MOCK_SPATIAL_NODES: SpatialNode[] = [
     name: "Zone C – East Block",
     type: "zone",
     geometryId: "geom-z3",
+    geometry: findGeometry("geom-z3"),
     level: 2,
     order: 2,
     metadata: { color: "#f59e0b" },
@@ -125,6 +133,7 @@ export const MOCK_SPATIAL_NODES: SpatialNode[] = [
     name: "Area A1 – Entry",
     type: "area",
     geometryId: null,
+    geometry: null,
     level: 3,
     order: 0,
     metadata: {},
