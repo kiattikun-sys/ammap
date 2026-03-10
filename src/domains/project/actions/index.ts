@@ -35,7 +35,7 @@ export async function createProject(formData: FormData): Promise<Project> {
 
   if (!orgId) throw new Error("No organization found");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   const db = supabase as any;
 
   const { data: project, error: projectError } = await db

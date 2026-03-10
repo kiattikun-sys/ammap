@@ -15,7 +15,6 @@ export async function updateWorkProgress(
     progressPercent === 100 ? "completed" :
     progressPercent > 0 ? "in_progress" : "planned";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = (await createSupabaseServer()) as any;
 
   const { data, error } = await db

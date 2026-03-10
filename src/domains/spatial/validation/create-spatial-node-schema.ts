@@ -7,7 +7,6 @@ export const createSpatialNodeSchema = z.object({
   geometry: z
     .object({
       type: z.enum(["polygon", "line", "point"]),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       geojson: z.any(),
     })
     .optional(),

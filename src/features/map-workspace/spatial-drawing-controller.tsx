@@ -51,11 +51,9 @@ export function SpatialDrawingController({
       });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (map as any).on("draw.create", onDrawCreate);
 
     return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (map as any).off("draw.create", onDrawCreate);
       if (drawRef.current) {
         map.removeControl(drawRef.current);

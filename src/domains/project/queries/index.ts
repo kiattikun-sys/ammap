@@ -39,7 +39,7 @@ export async function listProjects(): Promise<Project[]> {
 
   if (!membership) return [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   const { data, error } = await (supabase as any)
     .from("projects")
     .select("*")

@@ -37,7 +37,6 @@ export async function updateWorkItem(
   if (input.progress !== undefined) patch.progress = input.progress;
   if (input.metadata !== undefined) patch.metadata = input.metadata;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = getSupabaseClient()! as any;
   const { data, error } = await db
     .from("work_items")

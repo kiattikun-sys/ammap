@@ -9,7 +9,6 @@ export async function createSpatialNode(
   input: CreateSpatialNodeInput
 ): Promise<SpatialNode> {
   const validated = createSpatialNodeSchema.parse(input);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = (await createSupabaseServer()) as any;
 
   const geometry = validated.geometry?.geojson ?? null;

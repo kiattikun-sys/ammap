@@ -15,7 +15,6 @@ export async function createWorkItem(
   input: CreateWorkItemInput
 ): Promise<WorkItem> {
   const validated = createWorkItemSchema.parse(input);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = (await createSupabaseServer()) as any;
 
   const now = new Date();
