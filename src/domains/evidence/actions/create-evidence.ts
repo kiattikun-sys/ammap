@@ -39,29 +39,35 @@ export async function createEvidence(
   }
 
   const db = getSupabaseClient()!;
-  const { data, error } = await db
-    .from("evidence")
-    .insert({
-      project_id: projectId,
-      spatial_node_id: validated.spatialNodeId ?? null,
-      work_item_id: validated.workItemId ?? null,
-      defect_id: validated.defectId ?? null,
-      type: validated.type,
-      title: validated.title,
-      description: validated.description ?? null,
-      file_url: validated.fileUrl,
-      thumbnail_url: validated.thumbnailUrl ?? null,
-      location_lng: validated.locationLng ?? null,
-      location_lat: validated.locationLat ?? null,
-      captured_by: validated.capturedBy ?? null,
-      captured_at: validated.capturedAt ? validated.capturedAt.toISOString() : null,
-      metadata: {},
-    })
+
+  const insertPayload = {
+    project_id: projectId,
+    spatial_node_id: validated.spatialNodeId ?? null,
+    work_item_id: validated.workItemId ?? null,
+    defect_id: validated.defectId ?? null,
+    type: validated.type,
+    title: validated.title,
+    description: validated.description ?? null,
+    file_url: validated.fileUrl,
+    thumbnail_url: validated.thumbnailUrl ?? null,
+    location_lng: validated.locationLng ?? null,
+    location_lat: validated.locationLat ?? null,
+    captured_by: validated.capturedBy ?? null,
+    captured_at: validated.capturedAt ? validated.capturedAt.toISOString() : null,
+    metadata: {},
+  };
+
+  const { data, error } = await (db.from("evidence") as any)
+    .insert(insertPayload)
     .select()
     .single();
 
-  if (error) throw new Error(`createEvidence: ${error.message}`);
+  if (error) {
+    throw new Error(`createEvidence: ${error.message}`);
+  }
+
   const row = data as Record<string, unknown>;
+
   return {
     id: row.id as string,
     projectId: row.project_id as string,
