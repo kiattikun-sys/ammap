@@ -8,11 +8,13 @@ export const createTimelineEventSchema = z.object({
     "defect_resolved",
     "milestone",
   ]),
-  title: z.string().min(1, "Title is required").max(255),
+  title: z.string().min(1),
   spatialNodeId: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
-  timestamp: z.coerce.date().default(() => new Date()),
-  metadata: z.record(z.unknown()).optional(),
+  timestamp: z.coerce.date(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export type CreateTimelineEventInput = z.infer<typeof createTimelineEventSchema>;
+export type CreateTimelineEventInput = z.infer<
+  typeof createTimelineEventSchema
+>;
