@@ -10,6 +10,16 @@ export interface OrgProject {
   updatedAt: Date;
 }
 
+type ProjectRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  organization_id: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export async function listProjectsByOrganization(
   organizationId: string
 ): Promise<OrgProject[]> {
@@ -22,14 +32,18 @@ export async function listProjectsByOrganization(
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`listProjectsByOrganization: ${error.message}`);
+  if (error) {
+    throw new Error(`listProjectsByOrganization: ${error.message}`);
+  }
 
-  return (data ?? []).map((row) => ({
+  const rows = (data ?? []) as ProjectRow[];
+
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description ?? null,
-    organizationId: (row as Record<string, unknown>).organization_id as string,
-    metadata: (row.metadata as Record<string, unknown>) ?? {},
+    organizationId: row.organization_id,
+    metadata: row.metadata ?? {},
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   }));
