@@ -1,0 +1,1 @@
+export { zonesTable } from "./zones";

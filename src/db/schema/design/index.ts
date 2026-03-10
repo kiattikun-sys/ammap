@@ -1,0 +1,1 @@
+export { drawingsTable } from "./drawings";
