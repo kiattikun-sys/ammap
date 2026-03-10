@@ -35,22 +35,23 @@ declare namespace __next_route_internal_types__ {
     | `/login`
     | `/register`
     | `/signup`
+    | `/field-dashboard`
     | `/`
+    | `/api/auth/debug`
+    | `/api/auth/session`
+    | `/api/health`
+    | `/executive-dashboard`
     | `/dashboard`
     | `/projects`
-    | `/executive-dashboard`
-    | `/field-dashboard`
-    | `/api/auth/session`
-    | `/api/auth/debug`
-    | `/api/health`
   type DynamicRoutes<T extends string = string> = 
+    | `/api/auth/${CatchAllSlug<T>}`
     | `/${SafeSlug<T>}/ai`
-    | `/${SafeSlug<T>}/evidence`
     | `/${SafeSlug<T>}/defects`
-    | `/${SafeSlug<T>}/map`
-    | `/${SafeSlug<T>}/progress`
-    | `/${SafeSlug<T>}/overview`
     | `/${SafeSlug<T>}/documents`
+    | `/${SafeSlug<T>}/evidence`
+    | `/${SafeSlug<T>}/map`
+    | `/${SafeSlug<T>}/overview`
+    | `/${SafeSlug<T>}/progress`
     | `/${SafeSlug<T>}/quality`
     | `/${SafeSlug<T>}/reports`
     | `/${SafeSlug<T>}/settings`
@@ -58,7 +59,6 @@ declare namespace __next_route_internal_types__ {
     | `/${SafeSlug<T>}/work`
     | `/projects/${SafeSlug<T>}`
     | `/projects/${SafeSlug<T>}/evidence`
-    | `/api/auth/${CatchAllSlug<T>}`
 
   type RouteImpl<T> = 
     | StaticRoutes

@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,7 +15,7 @@ import { cn } from "@/lib/cn";
 
 interface NavItem {
   label: string;
-  href: string;
+  href: Route;
   icon: React.ReactNode;
 }
 
@@ -22,31 +23,51 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Workspace",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={16} /> },
+      {
+        label: "Dashboard",
+        href: "/dashboard" as Route,
+        icon: <LayoutDashboard size={16} />,
+      },
     ],
   },
   {
     title: "Projects",
     items: [
-      { label: "All Projects", href: "/projects", icon: <FolderOpen size={16} /> },
+      {
+        label: "All Projects",
+        href: "/projects" as Route,
+        icon: <FolderOpen size={16} />,
+      },
     ],
   },
   {
     title: "Executive",
     items: [
-      { label: "Dashboard", href: "/executive/dashboard", icon: <BarChart3 size={16} /> },
+      {
+        label: "Dashboard",
+        href: "/executive/dashboard" as Route,
+        icon: <BarChart3 size={16} />,
+      },
     ],
   },
   {
     title: "Field",
     items: [
-      { label: "Dashboard", href: "/field/dashboard", icon: <Hammer size={16} /> },
+      {
+        label: "Dashboard",
+        href: "/field/dashboard" as Route,
+        icon: <Hammer size={16} />,
+      },
     ],
   },
   {
     title: "Admin",
     items: [
-      { label: "Dashboard", href: "/admin/dashboard", icon: <ShieldCheck size={16} /> },
+      {
+        label: "Dashboard",
+        href: "/admin/dashboard" as Route,
+        icon: <ShieldCheck size={16} />,
+      },
     ],
   },
 ];
@@ -62,14 +83,18 @@ export function Sidebar() {
         </div>
         <span className="text-sm font-semibold text-sidebar-text-active">ammap</span>
       </div>
+
       <nav className="flex-1 overflow-y-auto py-4">
         {navSections.map((section) => (
           <div key={section.title} className="mb-4">
             <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-sidebar-text/60">
               {section.title}
             </p>
+
             {section.items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+
               return (
                 <Link
                   key={item.href}
