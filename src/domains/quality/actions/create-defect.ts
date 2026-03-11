@@ -5,7 +5,8 @@ import {
   createDefectSchema,
   type CreateDefectInput,
 } from "../validation/create-defect-schema";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
 
 export async function createDefect(
   projectId: string,
@@ -26,6 +27,7 @@ export async function createDefect(
       status: "open",
       assignedTo: validated.assignedTo ?? null,
       dueDate: validated.dueDate ?? null,
+      closedAt: null,
       locationLng: validated.locationLng ?? null,
       locationLat: validated.locationLat ?? null,
       metadata: {},
@@ -36,7 +38,7 @@ export async function createDefect(
     return defect;
   }
 
-  const db = getSupabaseClient()!;
+  const db = (await createSupabaseServer()) as any;
   const { data, error } = await db
     .from("defects")
     .insert({
@@ -58,7 +60,7 @@ export async function createDefect(
 
   if (error) throw new Error(`createDefect: ${error.message}`);
   const row = data as Record<string, unknown>;
-  return {
+  const defect: Defect = {
     id: row.id as string,
     projectId: row.project_id as string,
     spatialNodeId: (row.spatial_node_id as string | null) ?? null,
@@ -69,10 +71,21 @@ export async function createDefect(
     status: row.status as Defect["status"],
     assignedTo: (row.assigned_to as string | null) ?? null,
     dueDate: row.due_date ? new Date(row.due_date as string) : null,
+    closedAt: row.closed_at ? new Date(row.closed_at as string) : null,
     locationLng: (row.location_lng as number | null) ?? null,
     locationLat: (row.location_lat as number | null) ?? null,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
   };
+
+  createTimelineEvent(projectId, {
+    type: "defect_created",
+    title: `Defect created: ${defect.title}`,
+    spatialNodeId: defect.spatialNodeId,
+    timestamp: defect.createdAt,
+    metadata: { defectId: defect.id, severity: defect.severity },
+  }).catch(() => {});
+
+  return defect;
 }

@@ -1,5 +1,8 @@
 import type { Inspection } from "./inspection";
 import type { Defect } from "./defect";
+import type { CorrectiveAction } from "./corrective-action";
+
+export const MOCK_CORRECTIVE_ACTIONS: CorrectiveAction[] = [];
 
 export const MOCK_INSPECTIONS: Inspection[] = [
   {
@@ -9,8 +12,11 @@ export const MOCK_INSPECTIONS: Inspection[] = [
     title: "Structural Inspection – North Wing",
     description: "Check concrete pour quality and rebar placement.",
     status: "completed",
+    inspectionType: "structural",
+    result: "fail",
     assignedTo: "user-201",
     scheduledDate: new Date("2024-02-15"),
+    inspectedDate: new Date("2024-02-16"),
     completedDate: new Date("2024-02-16"),
     metadata: {},
     createdAt: new Date("2024-02-10"),
@@ -23,8 +29,11 @@ export const MOCK_INSPECTIONS: Inspection[] = [
     title: "Waterproofing Inspection – South Wing",
     description: "Verify membrane application coverage and joints.",
     status: "in_progress",
+    inspectionType: "waterproofing",
+    result: null,
     assignedTo: "user-202",
     scheduledDate: new Date("2024-02-20"),
+    inspectedDate: null,
     completedDate: null,
     metadata: {},
     createdAt: new Date("2024-02-12"),
@@ -37,8 +46,11 @@ export const MOCK_INSPECTIONS: Inspection[] = [
     title: "Steel Inspection – East Block",
     description: "Inspect rebar sizes, spacing, and tie wire.",
     status: "scheduled",
+    inspectionType: "structural",
+    result: null,
     assignedTo: "user-201",
     scheduledDate: new Date("2024-03-05"),
+    inspectedDate: null,
     completedDate: null,
     metadata: {},
     createdAt: new Date("2024-02-22"),
@@ -58,6 +70,7 @@ export const MOCK_DEFECTS: Defect[] = [
     status: "open",
     assignedTo: "user-101",
     dueDate: new Date("2024-03-01"),
+    closedAt: null,
     locationLng: 100.4992,
     locationLat: 13.7572,
     metadata: {},
@@ -75,6 +88,7 @@ export const MOCK_DEFECTS: Defect[] = [
     status: "in_progress",
     assignedTo: "user-102",
     dueDate: new Date("2024-03-10"),
+    closedAt: null,
     locationLng: 100.5005,
     locationLat: 13.7565,
     metadata: {},
@@ -92,6 +106,7 @@ export const MOCK_DEFECTS: Defect[] = [
     status: "open",
     assignedTo: "user-103",
     dueDate: new Date("2024-02-28"),
+    closedAt: null,
     locationLng: 100.4988,
     locationLat: 13.7542,
     metadata: { blockedBy: "material shortage" },
@@ -109,6 +124,7 @@ export const MOCK_DEFECTS: Defect[] = [
     status: "resolved",
     assignedTo: "user-104",
     dueDate: new Date("2024-02-25"),
+    closedAt: null,
     locationLng: 100.5012,
     locationLat: 13.7548,
     metadata: {},
@@ -126,6 +142,7 @@ export const MOCK_DEFECTS: Defect[] = [
     status: "open",
     assignedTo: "user-101",
     dueDate: new Date("2024-03-08"),
+    closedAt: null,
     locationLng: 100.5040,
     locationLat: 13.7560,
     metadata: {},

@@ -54,10 +54,12 @@ export function SpatialDrawingController({
     (map as any).on("draw.create", onDrawCreate);
 
     return () => {
-      (map as any).off("draw.create", onDrawCreate);
-      if (drawRef.current) {
-        map.removeControl(drawRef.current);
-        drawRef.current = null;
+      if (map) {
+        (map as any).off("draw.create", onDrawCreate);
+        if (drawRef.current) {
+          map.removeControl(drawRef.current);
+          drawRef.current = null;
+        }
       }
     };
   }, [map, isLoaded]);

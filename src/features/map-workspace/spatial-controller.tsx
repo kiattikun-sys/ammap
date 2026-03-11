@@ -87,10 +87,15 @@ export function SpatialController({ projectId, onZoneSelect }: SpatialController
     layerManager.register({ id: SPATIAL_LINE_LAYER, label: "Spatial (Border)", type: "line", visible: true, sourceId: SPATIAL_SOURCE_ID });
 
     return () => {
-      for (const id of [SPATIAL_FILL_LAYER, SPATIAL_LINE_LAYER, SPATIAL_LABEL_LAYER]) {
-        if (map.getLayer(id)) map.removeLayer(id);
+      try {
+        if (!map.isStyleLoaded()) return;
+        for (const id of [SPATIAL_FILL_LAYER, SPATIAL_LINE_LAYER, SPATIAL_LABEL_LAYER]) {
+          if (map.getLayer(id)) map.removeLayer(id);
+        }
+        if (map.getSource(SPATIAL_SOURCE_ID)) map.removeSource(SPATIAL_SOURCE_ID);
+      } catch {
+        // map was destroyed before cleanup
       }
-      if (map.getSource(SPATIAL_SOURCE_ID)) map.removeSource(SPATIAL_SOURCE_ID);
     };
   }, [map, isLoaded, nodes]);
 

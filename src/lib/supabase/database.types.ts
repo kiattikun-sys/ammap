@@ -140,8 +140,11 @@ export interface Database {
           title: string;
           description: string | null;
           status: string;
+          inspection_type: string;
+          result: string | null;
           assigned_to: string | null;
           scheduled_date: string | null;
+          inspected_date: string | null;
           completed_date: string | null;
           metadata: Json;
           created_at: string;
@@ -154,8 +157,11 @@ export interface Database {
           title: string;
           description?: string | null;
           status: string;
+          inspection_type?: string;
+          result?: string | null;
           assigned_to?: string | null;
           scheduled_date?: string | null;
+          inspected_date?: string | null;
           completed_date?: string | null;
           metadata?: Json;
           created_at?: string;
@@ -168,8 +174,11 @@ export interface Database {
           title?: string;
           description?: string | null;
           status?: string;
+          inspection_type?: string;
+          result?: string | null;
           assigned_to?: string | null;
           scheduled_date?: string | null;
+          inspected_date?: string | null;
           completed_date?: string | null;
           metadata?: Json;
           created_at?: string;
@@ -190,6 +199,7 @@ export interface Database {
           status: string;
           assigned_to: string | null;
           due_date: string | null;
+          closed_at: string | null;
           location_lng: number | null;
           location_lat: number | null;
           metadata: Json;
@@ -207,6 +217,7 @@ export interface Database {
           status: string;
           assigned_to?: string | null;
           due_date?: string | null;
+          closed_at?: string | null;
           location_lng?: number | null;
           location_lat?: number | null;
           metadata?: Json;
@@ -224,6 +235,7 @@ export interface Database {
           status?: string;
           assigned_to?: string | null;
           due_date?: string | null;
+          closed_at?: string | null;
           location_lng?: number | null;
           location_lat?: number | null;
           metadata?: Json;
@@ -414,6 +426,49 @@ export interface Database {
           user_id?: string;
           role?: string;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      corrective_actions: {
+        Row: {
+          id: string;
+          project_id: string;
+          defect_id: string;
+          spatial_node_id: string | null;
+          action_text: string;
+          status: string;
+          assigned_to_user_id: string | null;
+          due_date: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          defect_id: string;
+          spatial_node_id?: string | null;
+          action_text: string;
+          status?: string;
+          assigned_to_user_id?: string | null;
+          due_date?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          defect_id?: string;
+          spatial_node_id?: string | null;
+          action_text?: string;
+          status?: string;
+          assigned_to_user_id?: string | null;
+          due_date?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

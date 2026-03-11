@@ -7,6 +7,7 @@ export type DefectSeverity =
 export type DefectStatus =
   | "open"
   | "in_progress"
+  | "pending_reinspection"
   | "resolved"
   | "closed";
 
@@ -21,6 +22,7 @@ export interface Defect {
   status: DefectStatus;
   assignedTo: string | null;
   dueDate: Date | null;
+  closedAt: Date | null;
   locationLng: number | null;
   locationLat: number | null;
   metadata: Record<string, unknown>;

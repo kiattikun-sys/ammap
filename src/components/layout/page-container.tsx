@@ -10,8 +10,8 @@ export function PageContainer({ children, className, padded = true }: PageContai
   return (
     <main
       className={cn(
-        "flex-1 overflow-y-auto bg-slate-50",
-        padded && "p-6",
+        "flex-1 bg-slate-50",
+        padded ? "overflow-y-auto p-6" : "overflow-hidden h-full",
         className
       )}
     >

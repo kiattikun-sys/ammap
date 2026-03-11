@@ -6,6 +6,7 @@ export const createInspectionSchema = z.object({
   assignedTo: z.string().nullable().optional(),
   scheduledDate: z.coerce.date().nullable().optional(),
   description: z.string().nullable().optional(),
+  inspectionType: z.string().optional(),
 });
 
 export type CreateInspectionInput = z.infer<typeof createInspectionSchema>;

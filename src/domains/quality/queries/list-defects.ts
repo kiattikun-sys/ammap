@@ -21,6 +21,7 @@ function rowToDefect(row: Record<string, unknown>): Defect {
     status: row.status as DefectStatus,
     assignedTo: (row.assigned_to as string | null) ?? null,
     dueDate: row.due_date ? new Date(row.due_date as string) : null,
+    closedAt: row.closed_at ? new Date(row.closed_at as string) : null,
     locationLng: (row.location_lng as number | null) ?? null,
     locationLat: (row.location_lat as number | null) ?? null,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
