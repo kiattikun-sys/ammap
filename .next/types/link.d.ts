@@ -29,24 +29,24 @@ declare namespace __next_route_internal_types__ {
     S extends `${string}${SearchOrHash}` ? never : S
 
   type StaticRoutes = 
-    | `/`
-    | `/admin-dashboard`
-    | `/forgot-password`
-    | `/login`
-    | `/register`
-    | `/signup`
-    | `/field-dashboard`
-    | `/`
     | `/api/auth/debug`
     | `/api/auth/session`
     | `/api/health`
+    | `/`
+    | `/admin-dashboard`
+    | `/login`
+    | `/forgot-password`
+    | `/register`
+    | `/signup`
     | `/executive-dashboard`
+    | `/field-dashboard`
+    | `/`
     | `/dashboard`
     | `/projects`
   type DynamicRoutes<T extends string = string> = 
     | `/api/auth/${CatchAllSlug<T>}`
-    | `/${SafeSlug<T>}/ai`
     | `/${SafeSlug<T>}/defects`
+    | `/${SafeSlug<T>}/ai`
     | `/${SafeSlug<T>}/documents`
     | `/${SafeSlug<T>}/evidence`
     | `/${SafeSlug<T>}/map`
@@ -55,10 +55,10 @@ declare namespace __next_route_internal_types__ {
     | `/${SafeSlug<T>}/quality`
     | `/${SafeSlug<T>}/reports`
     | `/${SafeSlug<T>}/settings`
-    | `/${SafeSlug<T>}/spatial`
     | `/${SafeSlug<T>}/work`
-    | `/projects/${SafeSlug<T>}`
+    | `/${SafeSlug<T>}/spatial`
     | `/projects/${SafeSlug<T>}/evidence`
+    | `/projects/${SafeSlug<T>}`
 
   type RouteImpl<T> = 
     | StaticRoutes

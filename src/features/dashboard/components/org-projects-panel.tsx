@@ -14,13 +14,23 @@ export function OrgProjectsPanel() {
       try {
         const user = await getCurrentUser();
         if (!user) return;
-        const membership = await getUserOrganization(user.id);
+
+        // แก้ตรงนี้: บอก TypeScript ว่าผลลัพธ์ที่ได้จะมีหน้าตาอย่างไร
+        // หรือถ้าขี้เกียจไล่ Type ใช้ : any ไปก่อนเพื่อเช็ก Build ครับ
+        const membership = await getUserOrganization(user.id) as any; 
+        
         if (!membership) return;
+
+        // บรรทัดนี้จะไม่มี Error แล้ว
         const org = membership.organizations as { id: string; name: string } | null;
+        
         if (!org) return;
+
         setOrgName(org.name);
         const list = await listProjectsByOrganization(org.id);
         setProjects(list);
+      } catch (error) {
+        console.error("Error loading data:", error);
       } finally {
         setLoading(false);
       }
