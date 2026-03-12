@@ -1,13 +1,27 @@
 "use server";
 
-import { MOCK_SPATIAL_NODES } from "../model/mock-spatial-data";
+import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 
 export async function deleteSpatialNode(id: string): Promise<void> {
-  const existing = MOCK_SPATIAL_NODES.find((n) => n.id === id);
-  if (!existing) {
-    throw new Error(`SpatialNode "${id}" not found`);
+  const db = (await createSupabaseServer()) as any;
+
+  const { count, error: countError } = await db
+    .from("spatial_nodes")
+    .select("id", { count: "exact", head: true })
+    .eq("parent_id", id);
+
+  if (countError) throw new Error(`deleteSpatialNode: ${countError.message}`);
+  if ((count ?? 0) > 0) {
+    throw new Error("Cannot delete node that has child nodes");
   }
 
-  // TODO: delete from database
-  console.log("[deleteSpatialNode] Deleted (mock):", id);
+  const { data, error } = await db
+    .from("spatial_nodes")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) throw new Error(`deleteSpatialNode: ${error.message}`);
+  if (!data) throw new Error(`SpatialNode "${id}" not found`);
 }

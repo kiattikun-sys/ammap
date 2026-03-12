@@ -1,7 +1,7 @@
 "use server";
 
 import type { Json } from "@/lib/supabase/database.types";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 import type { TimelineEvent } from "../model/timeline-event";
 import {
   createTimelineEventSchema,
@@ -33,7 +33,7 @@ export async function createTimelineEvent(
     return event;
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
 
   const insertPayload = {
     project_id: projectId,

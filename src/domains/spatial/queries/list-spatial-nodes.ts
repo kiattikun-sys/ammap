@@ -1,6 +1,6 @@
 import type { SpatialNode, SpatialNodeType } from "../model/spatial-node";
 import { MOCK_SPATIAL_NODES } from "../model/mock-spatial-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export interface ListSpatialNodesFilter {
   projectId: string;
@@ -35,7 +35,7 @@ export async function listSpatialNodes(
     return nodes.sort((a, b) => a.order - b.order);
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   let query = db
     .from("spatial_nodes")
     .select("*")
@@ -51,5 +51,5 @@ export async function listSpatialNodes(
 
   const { data, error } = await query;
   if (error) throw new Error(`listSpatialNodes: ${error.message}`);
-  return (data ?? []).map((r) => rowToSpatialNode(r as Record<string, unknown>));
+  return (data ?? []).map((r: Record<string, unknown>) => rowToSpatialNode(r));
 }

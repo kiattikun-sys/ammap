@@ -85,7 +85,7 @@ export function SpatialNodeModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder={`e.g. ${nodeType === "site" ? "Main Site" : nodeType === "building" ? "Tower A" : nodeType === "floor" ? "Level 1" : nodeType === "zone" ? "North Wing" : "Unit 101"}`}
+              placeholder={({ site: "e.g. Main Site", building: "e.g. Tower A", floor: "e.g. Ground Floor", level: "e.g. Level B1", zone: "e.g. North Wing", area: "e.g. Unit 101" })[nodeType] ?? "Node name"}
             />
           </div>
 

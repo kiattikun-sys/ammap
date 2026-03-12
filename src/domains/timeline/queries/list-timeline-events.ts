@@ -1,6 +1,6 @@
 import type { TimelineEvent, TimelineEventType } from "../model/timeline-event";
 import { MOCK_TIMELINE_EVENTS } from "../model/mock-timeline-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export interface ListTimelineEventsFilter {
   projectId: string;
@@ -35,7 +35,7 @@ export async function listTimelineEvents(
     return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   let query = db
     .from("timeline_events")
     .select("*")

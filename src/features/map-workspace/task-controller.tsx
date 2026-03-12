@@ -1,20 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type mapboxgl from "mapbox-gl";
 import { useMap } from "@/lib/map";
 import { LayerManager } from "@/lib/map/layers";
 import { TaskRenderer } from "@/lib/map/renderers";
 import { listWorkItems } from "@/domains/work/queries/list-work-items";
 import { workItemsToGeoJSON } from "@/domains/work/utils/work-to-geojson";
 import type { WorkItem } from "@/domains/work/model/work-item";
+import type { SpatialNode } from "@/domains/spatial/model/spatial-node";
+
+const TASK_CIRCLE_LAYER_ID = "tasks-circle";
 
 interface TaskControllerProps {
   projectId: string;
   selectedZoneId?: string | null;
   timestampFilter?: Date | null;
+  spatialNodes?: SpatialNode[];
+  onWorkItemClick?: (spatialNodeId: string) => void;
+  onWorkItemCreated?: (item: WorkItem) => void;
 }
 
-export function TaskController({ projectId, selectedZoneId, timestampFilter }: TaskControllerProps) {
+export function TaskController({
+  projectId,
+  selectedZoneId,
+  timestampFilter,
+  spatialNodes = [],
+  onWorkItemClick,
+}: TaskControllerProps) {
   const { map, isLoaded } = useMap();
   const [items, setItems] = useState<WorkItem[]>([]);
 
@@ -23,38 +36,46 @@ export function TaskController({ projectId, selectedZoneId, timestampFilter }: T
   }, [projectId]);
 
   useEffect(() => {
-    if (!map || !isLoaded || items.length === 0) return;
+    if (!map || !isLoaded) return;
 
     const layerManager = new LayerManager(map);
     const taskRenderer = new TaskRenderer({ map, layerManager });
     const filtered = timestampFilter
       ? items.filter((i) => i.createdAt <= timestampFilter)
       : items;
-    const geojson = workItemsToGeoJSON(filtered);
+    const geojson = workItemsToGeoJSON(filtered, spatialNodes);
 
     taskRenderer.render(geojson);
 
     return () => {
       taskRenderer.clear();
     };
-  }, [map, isLoaded, items, timestampFilter]);
+  }, [map, isLoaded, items, timestampFilter, spatialNodes]);
 
   useEffect(() => {
-    if (!map || !isLoaded) return;
+    if (!map || !isLoaded || !onWorkItemClick) return;
+    const m = map;
 
-    function handleClick(e: mapboxgl.MapMouseEvent) {
-      if (selectedZoneId) {
-        const lng = parseFloat(e.lngLat.lng.toFixed(6));
-        const lat = parseFloat(e.lngLat.lat.toFixed(6));
-        console.log("Create task in zone:", selectedZoneId, { lng, lat });
-      }
+    function handleMarkerClick(e: mapboxgl.MapLayerMouseEvent) {
+      const feature = e.features?.[0];
+      if (!feature) return;
+      const spatialNodeId = feature.properties?.["spatialNodeId"] as string | undefined;
+      if (spatialNodeId) onWorkItemClick?.(spatialNodeId);
     }
 
-    map.on("click", handleClick);
+    function handleMouseEnter() { m.getCanvas().style.cursor = "pointer"; }
+    function handleMouseLeave() { m.getCanvas().style.cursor = ""; }
+
+    map.on("click", TASK_CIRCLE_LAYER_ID, handleMarkerClick);
+    map.on("mouseenter", TASK_CIRCLE_LAYER_ID, handleMouseEnter);
+    map.on("mouseleave", TASK_CIRCLE_LAYER_ID, handleMouseLeave);
+
     return () => {
-      map.off("click", handleClick);
+      map.off("click", TASK_CIRCLE_LAYER_ID, handleMarkerClick);
+      map.off("mouseenter", TASK_CIRCLE_LAYER_ID, handleMouseEnter);
+      map.off("mouseleave", TASK_CIRCLE_LAYER_ID, handleMouseLeave);
     };
-  }, [map, isLoaded, selectedZoneId]);
+  }, [map, isLoaded, onWorkItemClick]);
 
   return null;
 }

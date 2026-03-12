@@ -1,6 +1,6 @@
 import type { Defect } from "../model/defect";
 import { MOCK_DEFECTS } from "../model/mock-quality-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 function rowToDefect(row: Record<string, unknown>): Defect {
   return {
@@ -29,7 +29,7 @@ export async function listDefectsBySpatialNode(
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return MOCK_DEFECTS.filter((d) => d.spatialNodeId === spatialNodeId);
   }
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   const { data, error } = await db
     .from("defects")
     .select("*")

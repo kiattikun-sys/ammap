@@ -1,6 +1,6 @@
 import type { WorkItem, WorkStatus, WorkPriority } from "../model/work-item";
 import { MOCK_WORK_ITEMS } from "../model/mock-work-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export interface ListWorkItemsFilter {
   projectId: string;
@@ -38,7 +38,7 @@ export async function listWorkItems(
     return items;
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   let query = db.from("work_items").select("*").eq("project_id", filter.projectId);
   if (filter.status !== undefined) query = query.eq("status", filter.status);
   if (filter.assignedTo !== undefined) query = query.eq("assigned_to", filter.assignedTo);

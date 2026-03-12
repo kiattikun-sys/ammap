@@ -1,6 +1,6 @@
 import type { CorrectiveAction } from "../model/corrective-action";
 import { MOCK_CORRECTIVE_ACTIONS } from "../model/mock-quality-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 function rowToCorrectiveAction(row: Record<string, unknown>): CorrectiveAction {
   return {
@@ -22,7 +22,7 @@ export async function listCorrectiveActions(defectId: string): Promise<Correctiv
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return MOCK_CORRECTIVE_ACTIONS.filter((a) => a.defectId === defectId);
   }
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   const { data, error } = await db
     .from("corrective_actions")
     .select("*")

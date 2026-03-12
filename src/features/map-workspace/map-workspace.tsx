@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import type { SpatialNode } from "@/domains/spatial/model/spatial-node";
 import { MapProvider } from "@/lib/map";
 import { LayerToolbar } from "./layer-toolbar";
 import { MapContainer } from "./map-container";
@@ -24,22 +25,32 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [timestampFilter, setTimestampFilter] = useState<Date | null>(null);
   const [zoneTab, setZoneTab] = useState<ZoneTab>("tasks");
+  const [spatialNodes, setSpatialNodes] = useState<SpatialNode[]>([]);
 
   function handleZoneSelect(zoneId: string | null) {
     setSelectedZoneId(zoneId);
     if (zoneId) setZoneTab("tasks");
   }
 
+  const handleWorkItemClick = useCallback((spatialNodeId: string) => {
+    setSelectedZoneId(spatialNodeId);
+    setZoneTab("tasks");
+  }, []);
+
   return (
     <MapProvider>
       <SpatialController
         projectId={projectId}
+        selectedNodeId={selectedZoneId}
         onZoneSelect={handleZoneSelect}
+        onNodesChange={setSpatialNodes}
       />
       <TaskController
         projectId={projectId}
         selectedZoneId={selectedZoneId}
         timestampFilter={timestampFilter}
+        spatialNodes={spatialNodes}
+        onWorkItemClick={handleWorkItemClick}
       />
       <DefectController
         projectId={projectId}
@@ -92,6 +103,7 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
               <ZoneTaskPanel
                 projectId={projectId}
                 zoneId={selectedZoneId}
+                zoneName={spatialNodes.find((n) => n.id === selectedZoneId)?.name}
                 onClose={() => setSelectedZoneId(null)}
               />
             ) : (

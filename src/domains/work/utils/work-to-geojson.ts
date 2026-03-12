@@ -1,5 +1,5 @@
 import type { WorkItem, WorkStatus } from "../model/work-item";
-import { MOCK_SPATIAL_NODES_BY_ID } from "./spatial-node-lookup";
+import type { SpatialNode } from "@/domains/spatial/model/spatial-node";
 
 const STATUS_COLORS: Record<WorkStatus, string> = {
   planned: "#94a3b8",
@@ -8,17 +8,33 @@ const STATUS_COLORS: Record<WorkStatus, string> = {
   completed: "#22c55e",
 };
 
+function computeCentroid(geometry: GeoJSON.Geometry): [number, number] | null {
+  if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") return null;
+  const ring =
+    geometry.type === "Polygon"
+      ? geometry.coordinates[0]
+      : geometry.coordinates[0][0];
+  if (!ring || ring.length === 0) return null;
+  const lngs = ring.map((c) => c[0]);
+  const lats = ring.map((c) => c[1]);
+  return [
+    (Math.min(...lngs) + Math.max(...lngs)) / 2,
+    (Math.min(...lats) + Math.max(...lats)) / 2,
+  ];
+}
+
 export function workItemsToGeoJSON(
-  items: WorkItem[]
+  items: WorkItem[],
+  spatialNodes: SpatialNode[] = []
 ): GeoJSON.FeatureCollection {
+  const nodeById = new Map(spatialNodes.map((n) => [n.id, n]));
   const features: GeoJSON.Feature[] = [];
 
   for (const item of items) {
-    const coords = item.spatialNodeId
-      ? MOCK_SPATIAL_NODES_BY_ID[item.spatialNodeId]
-      : null;
-
-    if (!coords) continue;
+    if (!item.spatialNodeId) continue;
+    const node = nodeById.get(item.spatialNodeId);
+    const centroid = node?.geometry ? computeCentroid(node.geometry) : null;
+    if (!centroid) continue;
 
     features.push({
       type: "Feature",
@@ -34,7 +50,7 @@ export function workItemsToGeoJSON(
       },
       geometry: {
         type: "Point",
-        coordinates: coords,
+        coordinates: centroid,
       },
     });
   }

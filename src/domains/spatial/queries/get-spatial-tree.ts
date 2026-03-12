@@ -1,11 +1,11 @@
 import type { SpatialNode } from "../model/spatial-node";
-import { MOCK_SPATIAL_NODES } from "../model/mock-spatial-data";
+import { listSpatialNodes } from "./list-spatial-nodes";
 
 export interface SpatialTreeNode extends SpatialNode {
   children: SpatialTreeNode[];
 }
 
-function buildTree(
+export function buildTree(
   nodes: SpatialNode[],
   parentId: string | null
 ): SpatialTreeNode[] {
@@ -18,6 +18,6 @@ function buildTree(
 export async function getSpatialTree(
   projectId: string
 ): Promise<SpatialTreeNode[]> {
-  const nodes = MOCK_SPATIAL_NODES.filter((n) => n.projectId === projectId);
+  const nodes = await listSpatialNodes({ projectId });
   return buildTree(nodes, null);
 }

@@ -5,7 +5,7 @@ import {
   createEvidenceSchema,
   type CreateEvidenceInput,
 } from "../validation/create-evidence-schema";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export async function createEvidence(
   projectId: string,
@@ -38,7 +38,7 @@ export async function createEvidence(
     return evidence;
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
 
   const insertPayload = {
     project_id: projectId,

@@ -1,6 +1,6 @@
 import type { Evidence, EvidenceType } from "../model/evidence";
 import { MOCK_EVIDENCE } from "../model/mock-evidence-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export interface ListEvidenceFilter {
   projectId: string;
@@ -38,7 +38,7 @@ export async function listEvidence(
     return items;
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   let query = db.from("evidence").select("*").eq("project_id", filter.projectId);
   if (filter.type !== undefined) query = query.eq("type", filter.type);
 

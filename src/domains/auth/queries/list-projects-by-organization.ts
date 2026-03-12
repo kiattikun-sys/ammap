@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export interface OrgProject {
   id: string;
@@ -23,7 +23,7 @@ type ProjectRow = {
 export async function listProjectsByOrganization(
   organizationId: string
 ): Promise<OrgProject[]> {
-  const db = getSupabaseClient();
+  const db = createSupabaseBrowser();
   if (!db) return [];
 
   const { data, error } = await db
@@ -50,7 +50,7 @@ export async function listProjectsByOrganization(
 }
 
 export async function getUserOrganization(userId: string) {
-  const db = getSupabaseClient();
+  const db = createSupabaseBrowser();
   if (!db) return null;
 
   const { data, error } = await db

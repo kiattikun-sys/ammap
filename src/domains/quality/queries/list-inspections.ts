@@ -1,6 +1,6 @@
 import type { Inspection, InspectionStatus } from "../model/inspection";
 import { MOCK_INSPECTIONS } from "../model/mock-quality-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export interface ListInspectionsFilter {
   projectId: string;
@@ -38,7 +38,7 @@ export async function listInspections(
     return items;
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   let query = db.from("inspections").select("*").eq("project_id", filter.projectId);
   if (filter.status !== undefined) query = query.eq("status", filter.status);
   if (filter.spatialNodeId !== undefined) query = query.eq("spatial_node_id", filter.spatialNodeId);

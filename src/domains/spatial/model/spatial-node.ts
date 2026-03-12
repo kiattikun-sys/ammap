@@ -2,6 +2,7 @@ export type SpatialNodeType =
   | "site"
   | "building"
   | "floor"
+  | "level"
   | "zone"
   | "area";
 

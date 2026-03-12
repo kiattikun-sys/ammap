@@ -1,6 +1,6 @@
 import type { Defect, DefectSeverity, DefectStatus } from "../model/defect";
 import { MOCK_DEFECTS } from "../model/mock-quality-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 export interface ListDefectsFilter {
   projectId: string;
@@ -41,7 +41,7 @@ export async function listDefects(
     return items;
   }
 
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   let query = db.from("defects").select("*").eq("project_id", filter.projectId);
   if (filter.status !== undefined) query = query.eq("status", filter.status);
   if (filter.severity !== undefined) query = query.eq("severity", filter.severity);

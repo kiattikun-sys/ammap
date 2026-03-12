@@ -16,17 +16,21 @@ const SPATIAL_LABEL_LAYER = "spatial-nodes-label";
 
 interface SpatialControllerProps {
   projectId: string;
+  selectedNodeId?: string | null;
   onZoneSelect?: (zoneId: string | null) => void;
+  onNodesChange?: (nodes: SpatialNode[]) => void;
 }
 
-export function SpatialController({ projectId, onZoneSelect }: SpatialControllerProps) {
+export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onNodesChange }: SpatialControllerProps) {
   const { map, isLoaded } = useMap();
   const [nodes, setNodes] = useState<SpatialNode[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    listSpatialNodes({ projectId }).then(setNodes);
-  }, [projectId, refreshKey]);
+    listSpatialNodes({ projectId }).then((n) => {
+      setNodes(n);
+      onNodesChange?.(n);
+    });
+  }, [projectId]);
 
   useEffect(() => {
     if (!map || !isLoaded) return;
@@ -123,13 +127,60 @@ export function SpatialController({ projectId, onZoneSelect }: SpatialController
     };
   }, [map, isLoaded, onZoneSelect]);
 
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    if (!selectedNodeId) {
+      if (map.getLayer(SPATIAL_FILL_LAYER)) {
+        map.setPaintProperty(SPATIAL_FILL_LAYER, "fill-opacity", ["get", "fillOpacity"]);
+        map.setPaintProperty(SPATIAL_LINE_LAYER, "line-opacity", 0.85);
+      }
+      return;
+    }
+
+    const node = nodes.find((n) => n.id === selectedNodeId);
+    if (!node?.geometry) return;
+
+    if (map.getLayer(SPATIAL_FILL_LAYER)) {
+      map.setPaintProperty(SPATIAL_FILL_LAYER, "fill-opacity", [
+        "case",
+        ["==", ["get", "id"], selectedNodeId],
+        0.35,
+        0.04,
+      ]);
+      map.setPaintProperty(SPATIAL_LINE_LAYER, "line-opacity", [
+        "case",
+        ["==", ["get", "id"], selectedNodeId],
+        1.0,
+        0.3,
+      ]);
+    }
+
+    const geom = node.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon;
+    const coords: number[][] =
+      geom.type === "Polygon"
+        ? geom.coordinates[0]
+        : geom.coordinates.flat(2).reduce<number[][]>((acc, _, i, arr) =>
+            i % 2 === 0 ? [...acc, [arr[i] as unknown as number, arr[i + 1] as unknown as number]] : acc,
+            []
+          );
+
+    if (!coords.length) return;
+
+    const lngs = coords.map((c) => c[0]);
+    const lats = coords.map((c) => c[1]);
+    const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+    const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+
+    map.flyTo({ center: [centerLng, centerLat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+  }, [map, isLoaded, selectedNodeId, nodes]);
+
   return (
     <SpatialDrawingController
       projectId={projectId}
       existingNodes={nodes}
       onNodeCreated={(node) => {
         setNodes((prev) => [...prev, node]);
-        setRefreshKey((k) => k + 1);
       }}
     />
   );

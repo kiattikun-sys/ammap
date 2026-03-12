@@ -1,6 +1,6 @@
 import type { Inspection } from "../model/inspection";
 import { MOCK_INSPECTIONS } from "../model/mock-quality-data";
-import { getSupabaseClient } from "@/lib/supabase/supabase-client";
+import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 
 function rowToInspection(row: Record<string, unknown>): Inspection {
   return {
@@ -26,7 +26,7 @@ export async function getInspection(id: string): Promise<Inspection | null> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return MOCK_INSPECTIONS.find((i) => i.id === id) ?? null;
   }
-  const db = getSupabaseClient()!;
+  const db = createSupabaseBrowser();
   const { data, error } = await db.from("inspections").select("*").eq("id", id).single();
   if (error) return null;
   return rowToInspection(data as Record<string, unknown>);
