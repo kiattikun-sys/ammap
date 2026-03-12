@@ -14,7 +14,7 @@ export interface Database {
           id: string;
           name: string;
           description: string | null;
-          organization_id: string | null;
+          organization_id: string;
           metadata: Json;
           created_at: string;
           updated_at: string;
@@ -23,7 +23,7 @@ export interface Database {
           id?: string;
           name: string;
           description?: string | null;
-          organization_id?: string | null;
+          organization_id: string;
           metadata?: Json;
           created_at?: string;
           updated_at?: string;
@@ -32,7 +32,7 @@ export interface Database {
           id?: string;
           name?: string;
           description?: string | null;
-          organization_id?: string | null;
+          organization_id?: string;
           metadata?: Json;
           created_at?: string;
           updated_at?: string;
@@ -105,8 +105,8 @@ export interface Database {
           spatial_node_id?: string | null;
           title: string;
           description?: string | null;
-          status: string;
-          priority: string;
+          status?: string;
+          priority?: string;
           assigned_to?: string | null;
           due_date?: string | null;
           progress?: number;
@@ -213,8 +213,8 @@ export interface Database {
           inspection_id?: string | null;
           title: string;
           description?: string | null;
-          severity: string;
-          status: string;
+          severity?: string;
+          status?: string;
           assigned_to?: string | null;
           due_date?: string | null;
           closed_at?: string | null;
@@ -326,7 +326,7 @@ export interface Database {
           type: string;
           title: string;
           description?: string | null;
-          timestamp: string;
+          timestamp?: string;
           metadata?: Json;
           created_at?: string;
           updated_at?: string;
@@ -362,8 +362,8 @@ export interface Database {
           project_id: string;
           spatial_node_id?: string | null;
           progress_percent: number;
-          status: string;
-          recorded_at: string;
+          status?: string;
+          recorded_at?: string;
           recorded_by?: string | null;
           metadata?: Json;
         };
