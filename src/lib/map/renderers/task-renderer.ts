@@ -74,11 +74,16 @@ export class TaskRenderer extends SpatialRenderer {
   }
 
   clear(): void {
-    for (const id of [TASK_CIRCLE_LAYER_ID, TASK_LABEL_LAYER_ID]) {
-      if (this.map.getLayer(id)) this.map.removeLayer(id);
-    }
-    if (this.map.getSource(TASK_SOURCE_ID)) {
-      this.map.removeSource(TASK_SOURCE_ID);
+    try {
+      if (!this.map || !this.map.isStyleLoaded()) return;
+      for (const id of [TASK_CIRCLE_LAYER_ID, TASK_LABEL_LAYER_ID]) {
+        if (this.map.getLayer(id)) this.map.removeLayer(id);
+      }
+      if (this.map.getSource(TASK_SOURCE_ID)) {
+        this.map.removeSource(TASK_SOURCE_ID);
+      }
+    } catch {
+      // map was destroyed before cleanup
     }
   }
 }

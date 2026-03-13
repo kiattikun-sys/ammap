@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
 import { listWorkItems } from "@/domains/work/queries/list-work-items";
 import type { WorkItem } from "@/domains/work/model/work-item";
 import { TaskList } from "./task-list";
@@ -10,15 +9,13 @@ import { CreateTaskForm } from "./create-task-form";
 interface ZoneTaskPanelProps {
   projectId: string;
   zoneId: string;
-  zoneName?: string;
-  onClose: () => void;
+  onTaskMutated?: () => void;
 }
 
 export function ZoneTaskPanel({
   projectId,
   zoneId,
-  zoneName,
-  onClose,
+  onTaskMutated,
 }: ZoneTaskPanelProps) {
   const [tasks, setTasks] = useState<WorkItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +26,11 @@ export function ZoneTaskPanel({
     listWorkItems({ projectId })
       .then((all) => setTasks(all.filter((t) => t.spatialNodeId === zoneId)))
       .finally(() => setLoading(false));
+  }
+
+  function handleMutation() {
+    loadTasks();
+    onTaskMutated?.();
   }
 
   useEffect(() => {
@@ -43,23 +45,12 @@ export function ZoneTaskPanel({
       : 0;
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-l border-slate-200 bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-800">
-            {zoneName ?? "Zone"}
-          </p>
-          <p className="text-[10px] text-slate-400">
-            {tasks.length} task{tasks.length !== 1 ? "s" : ""} · {completedCount} done
-          </p>
-        </div>
-        <button
-          onClick={onClose}
-          className="ml-2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-        >
-          <X size={14} />
-        </button>
+    <div className="flex h-full w-full flex-col bg-white">
+      {/* Task count summary */}
+      <div className="border-b border-slate-100 px-4 py-1.5">
+        <p className="text-[10px] text-slate-400">
+          {tasks.length} task{tasks.length !== 1 ? "s" : ""} · {completedCount} done
+        </p>
       </div>
 
       {/* Progress summary */}
@@ -86,7 +77,7 @@ export function ZoneTaskPanel({
             spatialNodeId={zoneId}
             onCreated={() => {
               setShowForm(false);
-              loadTasks();
+              handleMutation();
             }}
             onCancel={() => setShowForm(false)}
           />
@@ -101,11 +92,11 @@ export function ZoneTaskPanel({
       </div>
 
       {/* Task list */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 pb-16">
         {loading ? (
           <div className="py-8 text-center text-xs text-slate-400">Loading tasks…</div>
         ) : (
-          <TaskList tasks={tasks} onUpdated={loadTasks} />
+          <TaskList tasks={tasks} onUpdated={handleMutation} />
         )}
       </div>
     </div>

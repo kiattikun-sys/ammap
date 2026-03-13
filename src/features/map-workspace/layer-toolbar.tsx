@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Layers, Eye, EyeOff, Map, Satellite, Sun, Moon } from "lucide-react";
+import { Layers, Eye, EyeOff, Map, Satellite, Sun, Moon, PenTool, X } from "lucide-react";
 import { useMap } from "@/lib/map";
 import { MAP_STYLES, type MapStyleId } from "@/lib/map/map-styles";
 import { cn } from "@/lib/cn";
+import type { DrawState } from "./spatial-drawing-controller";
+import { NODE_TYPE_LABELS, NODE_TYPE_ORDER } from "@/domains/spatial/services/spatial-drawing-service";
+import { TYPE_COLORS } from "@/domains/spatial/utils/spatial-to-geojson";
 
 interface LayerState {
   id: string;
@@ -19,7 +22,11 @@ const STYLE_ICONS: Record<MapStyleId, React.ReactNode> = {
   dark: <Moon size={12} />,
 };
 
-export function LayerToolbar() {
+interface LayerToolbarProps {
+  drawState?: DrawState | null;
+}
+
+export function LayerToolbar({ drawState }: LayerToolbarProps) {
   const { setStyle, currentStyle, isLoaded } = useMap();
 
   const [layers, setLayers] = useState<LayerState[]>([
@@ -67,6 +74,47 @@ export function LayerToolbar() {
           </div>
         ))}
       </div>
+
+      {drawState && (
+        <div className="border-t border-slate-100 p-2">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            Draw
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {NODE_TYPE_ORDER.map((type) => {
+              const isActive = drawState.activeType === type;
+              const color = TYPE_COLORS[type];
+              return (
+                <button
+                  key={type}
+                  onClick={() =>
+                    isActive
+                      ? drawState.onCancelDrawing()
+                      : drawState.onStartDrawing(type)
+                  }
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors",
+                    isActive ? "text-white" : "text-slate-700 hover:bg-slate-50"
+                  )}
+                  style={isActive ? { backgroundColor: color } : {}}
+                >
+                  <PenTool size={11} style={{ color: isActive ? "white" : color }} />
+                  {NODE_TYPE_LABELS[type]}
+                </button>
+              );
+            })}
+            {drawState.activeType && (
+              <button
+                onClick={drawState.onCancelDrawing}
+                className="mt-0.5 flex items-center gap-2 rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50"
+              >
+                <X size={11} />
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="border-t border-slate-100 p-2">
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">

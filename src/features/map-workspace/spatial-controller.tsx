@@ -8,6 +8,7 @@ import { listSpatialNodes } from "@/domains/spatial/queries/list-spatial-nodes";
 import { spatialNodesToGeoJSON } from "@/domains/spatial/utils/spatial-to-geojson";
 import type { SpatialNode } from "@/domains/spatial/model/spatial-node";
 import { SpatialDrawingController } from "./spatial-drawing-controller";
+import type { DrawState } from "./spatial-drawing-controller";
 
 const SPATIAL_SOURCE_ID = "spatial-nodes-source";
 const SPATIAL_FILL_LAYER = "spatial-nodes-fill";
@@ -19,9 +20,10 @@ interface SpatialControllerProps {
   selectedNodeId?: string | null;
   onZoneSelect?: (zoneId: string | null) => void;
   onNodesChange?: (nodes: SpatialNode[]) => void;
+  onDrawStateChange?: (state: DrawState) => void;
 }
 
-export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onNodesChange }: SpatialControllerProps) {
+export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onNodesChange, onDrawStateChange }: SpatialControllerProps) {
   const { map, isLoaded } = useMap();
   const [nodes, setNodes] = useState<SpatialNode[]>([]);
 
@@ -105,25 +107,32 @@ export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onN
 
   useEffect(() => {
     if (!map || !isLoaded || !onZoneSelect) return;
+    const m = map;
+    let suppressNextMapClick = false;
 
     function handleNodeClick(e: mapboxgl.MapLayerMouseEvent) {
       const features = e.features;
       if (features && features.length > 0) {
         const nodeId = features[0].properties?.["id"] as string | undefined;
+        suppressNextMapClick = true;
         onZoneSelect?.(nodeId ?? null);
       }
     }
 
     function handleMapClick() {
+      if (suppressNextMapClick) {
+        suppressNextMapClick = false;
+        return;
+      }
       onZoneSelect?.(null);
     }
 
-    map.on("click", SPATIAL_FILL_LAYER, handleNodeClick);
-    map.on("click", handleMapClick);
+    m.on("click", SPATIAL_FILL_LAYER, handleNodeClick);
+    m.on("click", handleMapClick);
 
     return () => {
-      map.off("click", SPATIAL_FILL_LAYER, handleNodeClick);
-      map.off("click", handleMapClick);
+      m.off("click", SPATIAL_FILL_LAYER, handleNodeClick);
+      m.off("click", handleMapClick);
     };
   }, [map, isLoaded, onZoneSelect]);
 
@@ -179,6 +188,8 @@ export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onN
     <SpatialDrawingController
       projectId={projectId}
       existingNodes={nodes}
+      hideToolbar
+      onDrawStateChange={onDrawStateChange}
       onNodeCreated={(node) => {
         setNodes((prev) => [...prev, node]);
       }}

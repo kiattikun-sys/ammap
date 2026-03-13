@@ -19,6 +19,7 @@ interface TaskControllerProps {
   spatialNodes?: SpatialNode[];
   onWorkItemClick?: (spatialNodeId: string) => void;
   onWorkItemCreated?: (item: WorkItem) => void;
+  refreshKey?: number;
 }
 
 export function TaskController({
@@ -27,13 +28,14 @@ export function TaskController({
   timestampFilter,
   spatialNodes = [],
   onWorkItemClick,
+  refreshKey = 0,
 }: TaskControllerProps) {
   const { map, isLoaded } = useMap();
   const [items, setItems] = useState<WorkItem[]>([]);
 
   useEffect(() => {
     listWorkItems({ projectId }).then(setItems);
-  }, [projectId]);
+  }, [projectId, refreshKey]);
 
   useEffect(() => {
     if (!map || !isLoaded) return;

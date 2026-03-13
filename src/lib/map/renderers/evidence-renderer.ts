@@ -76,11 +76,16 @@ export class EvidenceRenderer extends SpatialRenderer {
   }
 
   clear(): void {
-    for (const id of [EVIDENCE_CIRCLE_LAYER_ID, EVIDENCE_LABEL_LAYER_ID]) {
-      if (this.map.getLayer(id)) this.map.removeLayer(id);
-    }
-    if (this.map.getSource(EVIDENCE_SOURCE_ID)) {
-      this.map.removeSource(EVIDENCE_SOURCE_ID);
+    try {
+      if (!this.map || !this.map.isStyleLoaded()) return;
+      for (const id of [EVIDENCE_CIRCLE_LAYER_ID, EVIDENCE_LABEL_LAYER_ID]) {
+        if (this.map.getLayer(id)) this.map.removeLayer(id);
+      }
+      if (this.map.getSource(EVIDENCE_SOURCE_ID)) {
+        this.map.removeSource(EVIDENCE_SOURCE_ID);
+      }
+    } catch {
+      // map was destroyed before cleanup
     }
   }
 }

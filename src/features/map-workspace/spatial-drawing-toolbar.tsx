@@ -17,7 +17,7 @@ export function SpatialDrawingToolbar({
   onCancelDrawing,
 }: SpatialDrawingToolbarProps) {
   return (
-    <div className="absolute right-4 top-20 z-10 flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+    <div className="absolute left-4 top-20 z-20 flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
       <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
         Draw
       </p>

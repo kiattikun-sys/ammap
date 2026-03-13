@@ -2,7 +2,7 @@
 
 import type { WorkItem, WorkStatus, WorkPriority } from "../model/work-item";
 import { MOCK_WORK_ITEMS } from "../model/mock-work-data";
-import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
+import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 
 export interface UpdateWorkItemInput {
   title?: string;
@@ -37,7 +37,7 @@ export async function updateWorkItem(
   if (input.progress !== undefined) patch.progress = input.progress;
   if (input.metadata !== undefined) patch.metadata = input.metadata;
 
-  const db = createSupabaseBrowser() as any;
+  const db = (await createSupabaseServer()) as any;
   const { data, error } = await db
     .from("work_items")
     .update(patch)
