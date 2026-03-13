@@ -71,7 +71,39 @@ export async function createProject(formData: FormData): Promise<Project> {
     description: (row.description as string) ?? undefined,
     organizationId: row.organization_id as string,
     status: "active",
+    archivedAt: null,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
   };
+}
+
+export async function archiveProject(projectId: string): Promise<void> {
+  if (!projectId) throw new Error("projectId is required");
+
+  const supabase = await createSupabaseServer();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("user_id", user.id)
+    .single();
+
+  const role = (membership as { role: string } | null)?.role;
+  if (!role || !(["owner", "admin"] as string[]).includes(role)) {
+    throw new Error("Only organization owners and admins can archive projects");
+  }
+
+  const db = supabase as any;
+
+  const { error } = await db
+    .from("projects")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", projectId);
+
+  if (error) throw new Error(`archiveProject: ${error.message}`);
 }

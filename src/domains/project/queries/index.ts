@@ -3,12 +3,14 @@ import { getCurrentUser } from "@/domains/auth/services/auth-service";
 import type { Project } from "../model";
 
 function rowToProject(row: Record<string, unknown>): Project {
+  const archivedAt = row.archived_at ? new Date(row.archived_at as string) : null;
   return {
     id: row.id as string,
     name: row.name as string,
     description: (row.description as string) ?? undefined,
     organizationId: (row.organization_id as string) ?? "",
-    status: "active",
+    status: archivedAt ? "archived" : "active",
+    archivedAt,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
   };
@@ -44,6 +46,7 @@ export async function listProjects(): Promise<Project[]> {
     .from("projects")
     .select("*")
     .eq("organization_id", (membership as any).organization_id)
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`listProjects: ${error.message}`);

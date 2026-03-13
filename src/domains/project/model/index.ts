@@ -6,6 +6,7 @@ export interface Project {
   status: ProjectStatus;
   startDate?: Date;
   endDate?: Date;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

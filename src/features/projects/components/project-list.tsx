@@ -5,7 +5,11 @@ import { listProjects } from "@/domains/project/queries";
 import type { Project } from "@/domains/project/model";
 import { ProjectCard } from "./project-card";
 
-export function ProjectList() {
+interface ProjectListProps {
+  onArchived?: () => void;
+}
+
+export function ProjectList({ onArchived }: ProjectListProps = {}) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +49,7 @@ export function ProjectList() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {projects.map((project) => (
-        <ProjectCard key={project.id} project={project} />
+        <ProjectCard key={project.id} project={project} onArchived={onArchived} />
       ))}
     </div>
   );

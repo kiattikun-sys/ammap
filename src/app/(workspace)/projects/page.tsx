@@ -22,7 +22,7 @@ export default function ProjectsPage() {
         <CreateProjectForm onCreated={() => setRefreshKey((k) => k + 1)} />
       </div>
 
-      <ProjectList key={refreshKey} />
+      <ProjectList key={refreshKey} onArchived={() => setRefreshKey((k) => k + 1)} />
     </div>
   );
 }
