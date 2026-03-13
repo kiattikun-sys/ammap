@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
 import { listDefectsBySpatialNode } from "@/domains/quality/queries/list-defects-by-spatial-node";
 import type { Defect, DefectStatus } from "@/domains/quality/model/defect";
 import { CreateDefectForm } from "./create-defect-form";
@@ -10,7 +9,7 @@ import { DefectDetailPanel } from "./defect-detail-panel";
 interface ZoneDefectPanelProps {
   projectId: string;
   zoneId: string;
-  onClose: () => void;
+  onDefectMutated?: () => void;
 }
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -36,7 +35,7 @@ const STATUS_LABEL: Record<DefectStatus, string> = {
   closed: "Closed",
 };
 
-export function ZoneDefectPanel({ projectId, zoneId, onClose }: ZoneDefectPanelProps) {
+export function ZoneDefectPanel({ projectId, zoneId, onDefectMutated }: ZoneDefectPanelProps) {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -47,6 +46,11 @@ export function ZoneDefectPanel({ projectId, zoneId, onClose }: ZoneDefectPanelP
     listDefectsBySpatialNode(zoneId)
       .then(setDefects)
       .finally(() => setLoading(false));
+  }
+
+  function handleMutation() {
+    loadDefects();
+    onDefectMutated?.();
   }
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export function ZoneDefectPanel({ projectId, zoneId, onClose }: ZoneDefectPanelP
         defect={selectedDefect}
         onClose={() => setSelectedDefect(null)}
         onUpdated={() => {
-          loadDefects();
+          handleMutation();
           setSelectedDefect(null);
         }}
       />
@@ -70,21 +74,12 @@ export function ZoneDefectPanel({ projectId, zoneId, onClose }: ZoneDefectPanelP
   const openCount = defects.filter((d) => d.status === "open" || d.status === "in_progress").length;
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-l border-slate-200 bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-800">Defects</p>
-          <p className="text-[10px] text-slate-400">
-            {defects.length} total · {openCount} open
-          </p>
-        </div>
-        <button
-          onClick={onClose}
-          className="ml-2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-        >
-          <X size={14} />
-        </button>
+    <div className="flex h-full w-full flex-col bg-white">
+      {/* Summary */}
+      <div className="border-b border-slate-100 px-4 py-1.5">
+        <p className="text-[10px] text-slate-400">
+          {defects.length} total · {openCount} open
+        </p>
       </div>
 
       {/* Create toggle */}
@@ -95,7 +90,7 @@ export function ZoneDefectPanel({ projectId, zoneId, onClose }: ZoneDefectPanelP
             spatialNodeId={zoneId}
             onCreated={() => {
               setShowForm(false);
-              loadDefects();
+              handleMutation();
             }}
             onCancel={() => setShowForm(false)}
           />
@@ -110,7 +105,7 @@ export function ZoneDefectPanel({ projectId, zoneId, onClose }: ZoneDefectPanelP
       </div>
 
       {/* Defect list */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 pb-16">
         {loading ? (
           <div className="py-8 text-center text-xs text-slate-400">Loading defects…</div>
         ) : defects.length === 0 ? (

@@ -15,6 +15,9 @@ import { TimelineController } from "./timeline-controller";
 import { AIController } from "./ai-controller";
 import { ZoneTaskPanel } from "@/features/work/components/zone-task-panel";
 import { ZoneDefectPanel } from "@/features/quality/components/zone-defect-panel";
+import { DefectDetailPanel } from "@/features/quality/components/defect-detail-panel";
+import { getDefect } from "@/domains/quality/queries/get-defect";
+import type { Defect } from "@/domains/quality/model/defect";
 
 interface MapWorkspaceProps {
   projectId: string;
@@ -29,6 +32,9 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
   const [spatialNodes, setSpatialNodes] = useState<SpatialNode[]>([]);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
   const bumpTaskRefresh = useCallback(() => setTaskRefreshKey((k) => k + 1), []);
+  const [defectRefreshKey, setDefectRefreshKey] = useState(0);
+  const bumpDefectRefresh = useCallback(() => setDefectRefreshKey((k) => k + 1), []);
+  const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [drawState, setDrawState] = useState<DrawState | null>(null);
 
   function handleZoneSelect(zoneId: string | null) {
@@ -39,6 +45,11 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
   const handleWorkItemClick = useCallback((spatialNodeId: string) => {
     setSelectedZoneId(spatialNodeId);
     setZoneTab("tasks");
+  }, []);
+
+  const handleDefectClick = useCallback(async (defectId: string) => {
+    const d = await getDefect(defectId);
+    setSelectedDefect(d);
   }, []);
 
   return (
@@ -63,6 +74,9 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
         selectedZoneId={selectedZoneId}
         defectMode={false}
         timestampFilter={timestampFilter}
+        spatialNodes={spatialNodes}
+        refreshKey={defectRefreshKey}
+        onDefectClick={handleDefectClick}
       />
       <EvidenceController
         projectId={projectId}
@@ -80,7 +94,18 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
         <div className="relative flex h-full flex-1 overflow-hidden">
           <MapContainer />
         </div>
-        {selectedZoneId ? (
+        {selectedDefect ? (
+          <div className="flex h-full shrink-0 flex-col border-l border-slate-200 bg-white" style={{ width: 320 }}>
+            <DefectDetailPanel
+              defect={selectedDefect}
+              onClose={() => setSelectedDefect(null)}
+              onUpdated={() => {
+                bumpDefectRefresh();
+                setSelectedDefect(null);
+              }}
+            />
+          </div>
+        ) : selectedZoneId ? (
           <div className="flex h-full shrink-0 flex-col border-l border-slate-200 bg-white" style={{ width: 320 }}>
             {/* Zone header + tab switcher */}
             <div className="flex items-center border-b border-slate-100 px-3 py-2 gap-2">
@@ -126,7 +151,7 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
               <ZoneDefectPanel
                 projectId={projectId}
                 zoneId={selectedZoneId}
-                onClose={() => setSelectedZoneId(null)}
+                onDefectMutated={bumpDefectRefresh}
               />
             )}
           </div>

@@ -108,7 +108,7 @@ export function DefectDetailPanel({ defect, onClose, onUpdated }: DefectDetailPa
   const isOverdue = defect.dueDate && defect.status !== "closed" && new Date() > defect.dueDate;
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-l border-slate-200 bg-white">
+    <div className="flex h-full w-full flex-col bg-white">
       {/* Header */}
       <div className="flex items-start justify-between border-b border-slate-100 px-4 py-3">
         <div className="min-w-0 flex-1">

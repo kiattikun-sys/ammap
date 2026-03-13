@@ -9,11 +9,11 @@ import {
   MetricsSummary,
 } from "@/features/dashboard/components";
 import { SignOutButton } from "@/features/auth/sign-out-button";
-import { useFirstProject } from "@/features/projects/hooks/use-first-project";
+import { useOrgProjects } from "@/features/projects/hooks/use-org-projects";
 import Link from "next/link";
 
 export default function WorkspaceDashboardPage() {
-  const { projectId, loading: projectLoading } = useFirstProject();
+  const { projectIds, loading: projectLoading } = useOrgProjects();
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -37,7 +37,7 @@ export default function WorkspaceDashboardPage() {
         <div className="flex h-64 items-center justify-center">
           <div className="text-sm text-slate-400">Loading…</div>
         </div>
-      ) : !projectId ? (
+      ) : projectIds.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 py-16 text-center">
           <p className="text-sm font-medium text-slate-600">No projects yet</p>
           <p className="mt-1 text-xs text-slate-400">Create your first project to see dashboard metrics</p>
@@ -49,7 +49,7 @@ export default function WorkspaceDashboardPage() {
           </Link>
         </div>
       ) : (
-        <DashboardController projectId={projectId}>
+        <DashboardController projectIds={projectIds}>
           {({ health, metrics, riskSummary, loading, error }) => {
             if (loading) {
               return (

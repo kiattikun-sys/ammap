@@ -14,12 +14,12 @@ export interface DashboardState {
 }
 
 interface DashboardControllerProps {
-  projectId: string;
+  projectIds: string[];
   children: (state: DashboardState) => React.ReactNode;
 }
 
 export function DashboardController({
-  projectId,
+  projectIds,
   children,
 }: DashboardControllerProps) {
   const [state, setState] = useState<DashboardState>({
@@ -31,12 +31,16 @@ export function DashboardController({
   });
 
   useEffect(() => {
+    if (projectIds.length === 0) {
+      setState({ health: null, metrics: null, riskSummary: [], loading: false, error: null });
+      return;
+    }
     setState((s) => ({ ...s, loading: true, error: null }));
 
     Promise.all([
-      dashboardService.getProjectHealth(projectId),
-      dashboardService.getProjectMetrics(projectId),
-      dashboardService.getRiskSummary(projectId),
+      dashboardService.getOrgHealth(projectIds),
+      dashboardService.getOrgMetrics(projectIds),
+      dashboardService.getOrgRiskSummary(projectIds),
     ])
       .then(([health, metrics, riskSummary]) => {
         setState({ health, metrics, riskSummary, loading: false, error: null });
@@ -48,7 +52,8 @@ export function DashboardController({
           error: err instanceof Error ? err.message : "Failed to load dashboard",
         }));
       });
-  }, [projectId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectIds.join(",")]);
 
   return <>{children(state)}</>;
 }
