@@ -98,12 +98,16 @@ export async function archiveProject(projectId: string): Promise<void> {
     throw new Error("Only organization owners and admins can archive projects");
   }
 
+  const orgId = (membership as { organization_id: string; role: string } | null)?.organization_id;
+  if (!orgId) throw new Error("No organization found");
+
   const db = supabase as any;
 
   const { error } = await db
     .from("projects")
     .update({ archived_at: new Date().toISOString() })
-    .eq("id", projectId);
+    .eq("id", projectId)
+    .eq("organization_id", orgId);
 
   if (error) throw new Error(`archiveProject: ${error.message}`);
 }

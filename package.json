@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "bootstrap": "ALLOW_TEST_BOOTSTRAP=true npx tsx scripts/bootstrap/bootstrap.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-draw": "^1.5.1",

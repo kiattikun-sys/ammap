@@ -7,7 +7,7 @@ import { ArchiveProjectDialog } from "./archive-project-dialog";
 
 interface ProjectCardProps {
   project: Project;
-  onArchived?: () => void;
+  onArchived?: (projectId: string) => void;
 }
 
 export function ProjectCard({ project, onArchived }: ProjectCardProps) {
@@ -62,7 +62,7 @@ export function ProjectCard({ project, onArchived }: ProjectCardProps) {
           projectName={project.name}
           onArchived={() => {
             setShowDialog(false);
-            onArchived?.();
+            onArchived?.(project.id);
           }}
           onCancel={() => setShowDialog(false)}
         />

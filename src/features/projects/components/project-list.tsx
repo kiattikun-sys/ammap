@@ -15,11 +15,17 @@ export function ProjectList({ onArchived }: ProjectListProps = {}) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
     listProjects()
       .then(setProjects)
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
       .finally(() => setLoading(false));
   }, []);
+
+  function handleArchived(projectId: string) {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    onArchived?.();
+  }
 
   if (loading) {
     return (
@@ -49,7 +55,7 @@ export function ProjectList({ onArchived }: ProjectListProps = {}) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {projects.map((project) => (
-        <ProjectCard key={project.id} project={project} onArchived={onArchived} />
+        <ProjectCard key={project.id} project={project} onArchived={handleArchived} />
       ))}
     </div>
   );
