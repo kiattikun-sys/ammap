@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { WorkItem, WorkStatus } from "@/domains/work/model/work-item";
 import { updateWorkProgress } from "@/domains/work/actions/update-work-progress";
 import { updateWorkItem } from "@/domains/work/actions/update-work-item";
+import { useOrgProfiles } from "@/domains/profiles/hooks/use-org-profiles";
 
 interface TaskListProps {
   tasks: WorkItem[];
@@ -47,7 +48,15 @@ const STATUS_SEGMENT_ACTIVE: Record<WorkStatus, string> = {
   completed: "bg-green-100 text-green-700 font-semibold",
 };
 
-function TaskCard({ task, onUpdated }: { task: WorkItem; onUpdated?: () => void }) {
+function TaskCard({
+  task,
+  onUpdated,
+  resolveAssignee,
+}: {
+  task: WorkItem;
+  onUpdated?: () => void;
+  resolveAssignee: (id: string | null) => string;
+}) {
   const [status, setStatus] = useState<WorkStatus>(task.status);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -160,15 +169,15 @@ function TaskCard({ task, onUpdated }: { task: WorkItem; onUpdated?: () => void 
             {task.dueDate.toLocaleDateString()}
           </span>
         )}
-        {task.assignedTo && (
-          <span className="truncate">👤 {task.assignedTo.slice(0, 8)}…</span>
-        )}
+        <span className="truncate">👤 {resolveAssignee(task.assignedTo)}</span>
       </div>
     </div>
   );
 }
 
 export function TaskList({ tasks, onUpdated }: TaskListProps) {
+  const { resolveAssignee } = useOrgProfiles();
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -190,7 +199,7 @@ export function TaskList({ tasks, onUpdated }: TaskListProps) {
     return (
       <div className="space-y-2">
         {tasks.map((t) => (
-          <TaskCard key={t.id} task={t} onUpdated={onUpdated} />
+          <TaskCard key={t.id} task={t} onUpdated={onUpdated} resolveAssignee={resolveAssignee} />
         ))}
       </div>
     );
@@ -205,7 +214,7 @@ export function TaskList({ tasks, onUpdated }: TaskListProps) {
           </p>
           <div className="space-y-2">
             {zoneTasks.map((t) => (
-              <TaskCard key={t.id} task={t} onUpdated={onUpdated} />
+              <TaskCard key={t.id} task={t} onUpdated={onUpdated} resolveAssignee={resolveAssignee} />
             ))}
           </div>
         </div>
