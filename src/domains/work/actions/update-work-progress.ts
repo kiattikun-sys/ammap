@@ -2,11 +2,14 @@
 
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import type { WorkItem } from "../model/work-item";
+import { requirePermission } from "@/lib/permissions/can-perform";
+import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
 
 export async function updateWorkProgress(
   id: string,
   progressPercent: number
 ): Promise<WorkItem> {
+  await requirePermission("update:work_progress");
   if (progressPercent < 0 || progressPercent > 100) {
     throw new Error("Progress must be between 0 and 100");
   }
@@ -27,7 +30,7 @@ export async function updateWorkProgress(
   if (error) throw new Error(`updateWorkProgress: ${error.message}`);
   const row = data as Record<string, unknown>;
   const prog = (row.progress as number) ?? 0;
-  return {
+  const workItem: WorkItem = {
     id: row.id as string,
     projectId: row.project_id as string,
     spatialNodeId: (row.spatial_node_id as string | null) ?? null,
@@ -43,4 +46,19 @@ export async function updateWorkProgress(
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
   };
+
+  const eventType =
+    status === "completed" ? "work_item_completed" :
+    status === "in_progress" ? "work_item_started" :
+    "progress_updated";
+
+  createTimelineEvent(workItem.projectId, {
+    type: eventType,
+    title: `Work item ${status}: ${workItem.title}`,
+    spatialNodeId: workItem.spatialNodeId,
+    timestamp: workItem.updatedAt,
+    metadata: { workItemId: workItem.id, progress: prog },
+  }).catch(() => {});
+
+  return workItem;
 }

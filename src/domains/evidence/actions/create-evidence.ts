@@ -6,11 +6,14 @@ import {
   type CreateEvidenceInput,
 } from "../validation/create-evidence-schema";
 import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
+import { requirePermission } from "@/lib/permissions/can-perform";
+import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
 
 export async function createEvidence(
   projectId: string,
   input: CreateEvidenceInput
 ): Promise<Evidence> {
+  await requirePermission("create:evidence");
   const validated = createEvidenceSchema.parse(input);
   const now = new Date();
 
@@ -68,7 +71,7 @@ export async function createEvidence(
 
   const row = data as Record<string, unknown>;
 
-  return {
+  const evidence: Evidence = {
     id: row.id as string,
     projectId: row.project_id as string,
     spatialNodeId: (row.spatial_node_id as string | null) ?? null,
@@ -87,4 +90,19 @@ export async function createEvidence(
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
   };
+
+  createTimelineEvent(projectId, {
+    type: "evidence_uploaded",
+    title: `Evidence uploaded: ${evidence.title}`,
+    spatialNodeId: evidence.spatialNodeId,
+    timestamp: evidence.createdAt,
+    metadata: {
+      evidenceId: evidence.id,
+      type: evidence.type,
+      defectId: evidence.defectId,
+      workItemId: evidence.workItemId,
+    },
+  }).catch(() => {});
+
+  return evidence;
 }

@@ -4,6 +4,7 @@ import type { Defect, DefectStatus } from "../model/defect";
 import { MOCK_DEFECTS } from "../model/mock-quality-data";
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 function rowToDefect(row: Record<string, unknown>): Defect {
   return {
@@ -26,10 +27,20 @@ function rowToDefect(row: Record<string, unknown>): Defect {
   };
 }
 
+const ALLOWED_TRANSITIONS: Record<DefectStatus, DefectStatus[]> = {
+  open: ["in_progress"],
+  in_progress: ["pending_reinspection"],
+  pending_reinspection: ["closed", "in_progress"],
+  resolved: ["closed"],
+  closed: [],
+};
+
 export async function updateDefectStatus(
   id: string,
   status: DefectStatus
 ): Promise<Defect> {
+  const permission = status === "closed" ? "close:defect" : "update:defect_status";
+  await requirePermission(permission);
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     const existing = MOCK_DEFECTS.find((d) => d.id === id);
     if (!existing) throw new Error(`Defect "${id}" not found`);
@@ -44,6 +55,22 @@ export async function updateDefectStatus(
   }
 
   const db = (await createSupabaseServer()) as any;
+
+  const { data: current, error: fetchErr } = await db
+    .from("defects")
+    .select("status")
+    .eq("id", id)
+    .single();
+  if (fetchErr) throw new Error(`updateDefectStatus: ${fetchErr.message}`);
+
+  const currentStatus = (current as { status: DefectStatus }).status;
+  const allowed = ALLOWED_TRANSITIONS[currentStatus] ?? [];
+  if (!allowed.includes(status)) {
+    throw new Error(
+      `Invalid defect transition: ${currentStatus} → ${status}. Allowed: ${allowed.join(", ") || "none"}`
+    );
+  }
+
   const patch: Record<string, unknown> = { status };
   if (status === "closed") patch.closed_at = new Date().toISOString();
 

@@ -3,6 +3,14 @@
 import type { WorkItem, WorkStatus, WorkPriority } from "../model/work-item";
 import { MOCK_WORK_ITEMS } from "../model/mock-work-data";
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { requirePermission } from "@/lib/permissions/can-perform";
+
+const ALLOWED_WORK_TRANSITIONS: Record<WorkStatus, WorkStatus[]> = {
+  planned: ["in_progress", "blocked"],
+  in_progress: ["completed", "blocked"],
+  blocked: ["in_progress"],
+  completed: [],
+};
 
 export interface UpdateWorkItemInput {
   title?: string;
@@ -19,12 +27,30 @@ export async function updateWorkItem(
   id: string,
   input: UpdateWorkItemInput
 ): Promise<WorkItem> {
+  await requirePermission("update:work_item");
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     const existing = MOCK_WORK_ITEMS.find((w) => w.id === id);
     if (!existing) throw new Error(`WorkItem "${id}" not found`);
     const updated: WorkItem = { ...existing, ...input, updatedAt: new Date() };
     console.log("[updateWorkItem] Updated (mock):", updated);
     return updated;
+  }
+
+  if (input.status !== undefined) {
+    const db2 = (await createSupabaseServer()) as any;
+    const { data: current, error: fetchErr } = await db2
+      .from("work_items")
+      .select("status")
+      .eq("id", id)
+      .single();
+    if (fetchErr) throw new Error(`updateWorkItem: ${fetchErr.message}`);
+    const currentStatus = (current as { status: WorkStatus }).status;
+    const allowed = ALLOWED_WORK_TRANSITIONS[currentStatus] ?? [];
+    if (!allowed.includes(input.status)) {
+      throw new Error(
+        `Invalid work item transition: ${currentStatus} \u2192 ${input.status}. Allowed: ${allowed.join(", ") || "none"}`
+      );
+    }
   }
 
   const patch: Record<string, unknown> = {};

@@ -7,6 +7,7 @@ import {
 } from "../validation/create-corrective-action-schema";
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 function rowToCorrectiveAction(row: Record<string, unknown>): CorrectiveAction {
   return {
@@ -28,6 +29,7 @@ export async function createCorrectiveAction(
   projectId: string,
   input: CreateCorrectiveActionInput
 ): Promise<CorrectiveAction> {
+  await requirePermission("create:corrective_action");
   const validated = createCorrectiveActionSchema.parse(input);
   const db = (await createSupabaseServer()) as any;
 
@@ -49,7 +51,7 @@ export async function createCorrectiveAction(
   const ca = rowToCorrectiveAction(data as Record<string, unknown>);
 
   createTimelineEvent(projectId, {
-    type: "defect_created",
+    type: "corrective_action_created",
     title: `Corrective action assigned`,
     spatialNodeId: ca.spatialNodeId,
     timestamp: ca.createdAt,

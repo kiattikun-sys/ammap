@@ -6,6 +6,16 @@ import {
   type UpdateCorrectiveActionInput,
 } from "../validation/update-corrective-action-schema";
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { requirePermission } from "@/lib/permissions/can-perform";
+import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
+import type { CorrectiveActionStatus } from "../model/corrective-action";
+
+const ALLOWED_CA_TRANSITIONS: Record<CorrectiveActionStatus, CorrectiveActionStatus[]> = {
+  open: ["in_progress", "cancelled"],
+  in_progress: ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+};
 
 function rowToCorrectiveAction(row: Record<string, unknown>): CorrectiveAction {
   return {
@@ -27,8 +37,26 @@ export async function updateCorrectiveAction(
   id: string,
   input: UpdateCorrectiveActionInput
 ): Promise<CorrectiveAction> {
+  const permission = input.status === "completed" ? "complete:corrective_action" : "create:corrective_action";
+  await requirePermission(permission);
   const validated = updateCorrectiveActionSchema.parse(input);
   const db = (await createSupabaseServer()) as any;
+
+  if (validated.status !== undefined) {
+    const { data: current, error: fetchErr } = await db
+      .from("corrective_actions")
+      .select("status")
+      .eq("id", id)
+      .single();
+    if (fetchErr) throw new Error(`updateCorrectiveAction: ${fetchErr.message}`);
+    const currentStatus = (current as { status: CorrectiveActionStatus }).status;
+    const allowed = ALLOWED_CA_TRANSITIONS[currentStatus] ?? [];
+    if (!allowed.includes(validated.status)) {
+      throw new Error(
+        `Invalid corrective action transition: ${currentStatus} \u2192 ${validated.status}. Allowed: ${allowed.join(", ") || "none"}`
+      );
+    }
+  }
 
   const patch: Record<string, unknown> = {};
   if (validated.status !== undefined) {
@@ -51,5 +79,17 @@ export async function updateCorrectiveAction(
     .single();
 
   if (error) throw new Error(`updateCorrectiveAction: ${error.message}`);
-  return rowToCorrectiveAction(data as Record<string, unknown>);
+  const ca = rowToCorrectiveAction(data as Record<string, unknown>);
+
+  if (validated.status === "completed") {
+    createTimelineEvent(ca.projectId, {
+      type: "corrective_action_completed",
+      title: `Corrective action completed`,
+      spatialNodeId: ca.spatialNodeId,
+      timestamp: ca.completedAt ?? new Date(),
+      metadata: { correctiveActionId: ca.id, defectId: ca.defectId },
+    }).catch(() => {});
+  }
+
+  return ca;
 }

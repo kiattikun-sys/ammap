@@ -7,11 +7,13 @@ import {
 } from "../validation/create-defect-schema";
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 export async function createDefect(
   projectId: string,
   input: CreateDefectInput
 ): Promise<Defect> {
+  await requirePermission("create:defect");
   const validated = createDefectSchema.parse(input);
   const now = new Date();
 

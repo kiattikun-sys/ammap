@@ -6,6 +6,8 @@ import {
   type CreateInspectionInput,
 } from "../validation/create-inspection-schema";
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { requirePermission } from "@/lib/permissions/can-perform";
+import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
 
 function rowToInspection(row: Record<string, unknown>): Inspection {
   return {
@@ -31,6 +33,7 @@ export async function createInspection(
   projectId: string,
   input: CreateInspectionInput
 ): Promise<Inspection> {
+  await requirePermission("create:inspection");
   const validated = createInspectionSchema.parse(input);
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -74,5 +77,15 @@ export async function createInspection(
     .single();
 
   if (error) throw new Error(`createInspection: ${error.message}`);
-  return rowToInspection(data as Record<string, unknown>);
+  const inspection = rowToInspection(data as Record<string, unknown>);
+
+  createTimelineEvent(projectId, {
+    type: "inspection_scheduled",
+    title: `Inspection scheduled: ${inspection.title}`,
+    spatialNodeId: inspection.spatialNodeId,
+    timestamp: inspection.scheduledDate ?? inspection.createdAt,
+    metadata: { inspectionId: inspection.id, inspectionType: inspection.inspectionType },
+  }).catch(() => {});
+
+  return inspection;
 }

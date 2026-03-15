@@ -2,8 +2,10 @@
 
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import type { Project } from "../model";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 export async function createProject(formData: FormData): Promise<Project> {
+  await requirePermission("create:project");
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const description = (formData.get("description") as string | null)?.trim() ?? "";
 

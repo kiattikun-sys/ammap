@@ -1,3 +1,13 @@
-export default function ProjectProgressPage() {
-  return <div>Project progress</div>;
+import { listWorkItems } from "@/domains/work/queries/list-work-items";
+import { ProgressPageClient } from "@/features/work/components/progress-page-client";
+
+interface Props {
+  params: { projectId: string };
+}
+
+export default async function ProjectProgressPage({ params }: Props) {
+  const { projectId } = params;
+  const items = await listWorkItems({ projectId });
+
+  return <ProgressPageClient projectId={projectId} items={items} />;
 }

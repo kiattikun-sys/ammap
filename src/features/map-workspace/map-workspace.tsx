@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Camera } from "lucide-react";
 import type { SpatialNode } from "@/domains/spatial/model/spatial-node";
 import { MapProvider } from "@/lib/map";
 import { LayerToolbar } from "./layer-toolbar";
@@ -36,6 +37,7 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
   const bumpDefectRefresh = useCallback(() => setDefectRefreshKey((k) => k + 1), []);
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [drawState, setDrawState] = useState<DrawState | null>(null);
+  const [captureMode, setCaptureMode] = useState(false);
 
   function handleZoneSelect(zoneId: string | null) {
     setSelectedZoneId(zoneId);
@@ -81,7 +83,7 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
       <EvidenceController
         projectId={projectId}
         selectedZoneId={selectedZoneId}
-        captureMode={false}
+        captureMode={captureMode}
         timestampFilter={timestampFilter}
       />
       <TimelineController
@@ -93,6 +95,18 @@ export function MapWorkspace({ projectId }: MapWorkspaceProps) {
         <LayerToolbar drawState={drawState} />
         <div className="relative flex h-full flex-1 overflow-hidden">
           <MapContainer />
+          <button
+            onClick={() => setCaptureMode((v) => !v)}
+            title={captureMode ? "Exit evidence capture mode" : "Capture evidence (click map to place)"}
+            className={`absolute bottom-4 right-4 z-10 flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold shadow-md transition-colors ${
+              captureMode
+                ? "bg-orange-500 text-white hover:bg-orange-600"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <Camera size={13} />
+            {captureMode ? "Cancel Capture" : "Add Evidence"}
+          </button>
         </div>
         {selectedDefect ? (
           <div className="flex h-full shrink-0 flex-col border-l border-slate-200 bg-white" style={{ width: 320 }}>

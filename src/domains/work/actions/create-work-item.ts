@@ -3,6 +3,8 @@
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import type { WorkItem } from "../model/work-item";
 import { createWorkItemSchema, type CreateWorkItemInput } from "../validation/create-work-item-schema";
+import { requirePermission } from "@/lib/permissions/can-perform";
+import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -14,6 +16,7 @@ export async function createWorkItem(
   projectId: string,
   input: CreateWorkItemInput
 ): Promise<WorkItem> {
+  await requirePermission("create:work_item");
   const validated = createWorkItemSchema.parse(input);
   const db = (await createSupabaseServer()) as any;
 
@@ -48,7 +51,7 @@ export async function createWorkItem(
   if (error) throw new Error(`createWorkItem: ${error.message}`);
   const row = data as Record<string, unknown>;
   const prog = (row.progress as number) ?? 0;
-  return {
+  const workItem: WorkItem = {
     id: row.id as string,
     projectId: row.project_id as string,
     spatialNodeId: (row.spatial_node_id as string | null) ?? null,
@@ -64,4 +67,14 @@ export async function createWorkItem(
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
   };
+
+  createTimelineEvent(projectId, {
+    type: "work_item_created",
+    title: `Work item created: ${workItem.title}`,
+    spatialNodeId: workItem.spatialNodeId,
+    timestamp: workItem.createdAt,
+    metadata: { workItemId: workItem.id, priority: workItem.priority },
+  }).catch(() => {});
+
+  return workItem;
 }

@@ -60,7 +60,7 @@ export function ArchiveProjectDialog({
         </div>
 
         <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          <p className="font-medium">"{projectName}" will be archived.</p>
+          <p className="font-medium">&ldquo;{projectName}&rdquo; will be archived.</p>
           <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-amber-700">
             <li>The project will be hidden from all project lists</li>
             <li>All project data is preserved — nothing is permanently deleted</li>

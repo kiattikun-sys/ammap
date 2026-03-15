@@ -1,0 +1,881 @@
+================================================================================
+AMMAP_AI_CONTEXT_MASTER_v1.txt
+AI Onboarding Document — AMMAP Construction Operations Platform
+Last updated: March 2026
+================================================================================
+
+This file is the canonical AI context document for the AMMAP system.
+It is designed to allow any AI system (GPT, Claude, Cursor, Copilot, agents)
+to immediately understand the architecture, domain model, workflows, security
+model, and development state of AMMAP without reading the full codebase.
+
+Read this file completely before reasoning about any AMMAP code, database, or
+UI changes.
+
+================================================================================
+SECTION 1 — PROJECT IDENTITY
+================================================================================
+
+NAME
+  AMMAP — Advanced Map-based Management and Action Platform
+
+ORIGIN
+  AMMAP evolved from an earlier product called MAP PROFILE, a geospatial
+  visualization layer for construction site data. MAP PROFILE proved that
+  positioning operational data on a zone-based map significantly reduced
+  the cognitive load for site managers. The product was extended to become
+  AMMAP: a full construction operations platform built around the map as its
+  primary interface.
+
+INDUSTRY
+  Construction and infrastructure project management.
+
+PROBLEM SOLVED
+  Traditional construction management tools (spreadsheets, generic PM tools,
+  disconnected inspection apps) suffer from:
+  - No spatial context (you can't see where a defect is on the site)
+  - Siloed data (inspections, defects, work items, evidence stored separately)
+  - No audit trail connecting inspection → defect → corrective action → closure
+  - No multi-tenant isolation for contractor/subcontractor structures
+  - No role enforcement aligned with real site hierarchy
+
+  AMMAP solves this by giving every operational entity (work item, defect,
+  inspection, evidence, corrective action) a spatial anchor on a zone map,
+  and by connecting all entities into a single auditable workflow.
+
+VISION
+  AMMAP as a Construction Operations Platform:
+  - One platform for the full project delivery lifecycle
+  - Map-first interface where the site map drives all operations
+  - Complete audit trail from construction start to handover
+  - Role-aware access matching real construction org hierarchy
+  - Multi-tenant safe: main contractors, subcontractors, QA firms
+
+================================================================================
+SECTION 2 — SYSTEM PURPOSE
+================================================================================
+
+AMMAP exists to manage construction project execution.
+
+Core operational domains:
+  - Work tracking       — plan, start, block, and complete work items
+  - Inspection management — schedule, conduct, and record inspection results
+  - Defect tracking     — open, assign, resolve, and close defects
+  - Corrective actions  — track remediation tasks for defects
+  - Evidence documentation — attach photos, videos, documents to any entity
+  - Progress monitoring — track overall project completion percentage
+  - Zone-based operations — all above anchored to spatial zones on the site map
+
+WHY A MAP-BASED INTERFACE
+  Construction sites are physically distributed spaces. A project manager
+  standing in front of a building needs to know: what work is happening in
+  Zone A, which defects are open in Zone B, which inspection is due on Floor 3.
+  A flat list cannot answer these questions efficiently. A zone map can.
+
+  The map workspace allows users to click on a spatial zone (site, building,
+  floor, level, zone, area) and see all associated work items, defects,
+  inspections, and evidence for that exact location. This collapses the gap
+  between "where I am" and "what data is relevant here."
+
+HOW THIS DIFFERS FROM TRADITIONAL TOOLS
+  Traditional tools:
+  - Tabular interfaces requiring manual location tagging
+  - No enforced lifecycle transitions (defects can jump from open to closed)
+  - No relationship between inspection → defect → corrective action
+  - Evidence stored in separate file systems not linked to entities
+  - No role enforcement at the service layer
+
+  AMMAP:
+  - Map-first: spatial nodes are first-class citizens
+  - Enforced lifecycle transitions at the server action layer
+  - Full entity chain: inspection → defect → corrective action → defect closure
+  - Evidence is a domain entity linked to work items, defects, and zones
+  - Role enforcement at server action layer (not just UI)
+
+================================================================================
+SECTION 3 — CORE SYSTEM ARCHITECTURE
+================================================================================
+
+TECHNOLOGY STACK
+  Frontend:   Next.js 14 (App Router), TypeScript, TailwindCSS, shadcn/ui
+  Backend:    Supabase (PostgreSQL + Auth + Storage + RLS)
+  ORM/Query:  Direct Supabase JS client (typed)
+  Auth:       Supabase Auth (JWT-based sessions)
+  Storage:    Supabase Storage bucket: evidence-files
+  Deployment: Netlify (frontend), Supabase Cloud (backend)
+  Map Layer:  Custom zone-based spatial canvas (MapWorkspace component)
+
+ARCHITECTURE LAYERS
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                     Next.js App Router                   │
+  │   Server Components (fetch) + Client Components (UI)    │
+  └───────────────────────┬─────────────────────────────────┘
+                          │
+  ┌───────────────────────▼─────────────────────────────────┐
+  │                   Server Actions                         │
+  │  "use server" functions — all writes go through here    │
+  │  Permission guards (requirePermission) applied here     │
+  │  Lifecycle transition guards applied here               │
+  └───────────────────────┬─────────────────────────────────┘
+                          │
+  ┌───────────────────────▼─────────────────────────────────┐
+  │              Supabase JS Client (server-side)            │
+  │         createSupabaseServer() — cookie-based auth       │
+  └───────────────────────┬─────────────────────────────────┘
+                          │
+  ┌───────────────────────▼─────────────────────────────────┐
+  │              PostgreSQL (via Supabase)                   │
+  │         Row Level Security enforced at DB layer          │
+  └─────────────────────────────────────────────────────────┘
+
+MULTI-TENANT DESIGN
+  The primary tenant boundary is the organization.
+  Every user belongs to one or more organizations via organization_members.
+  Every project belongs to one organization.
+  All project-scoped tables (work_items, defects, etc.) are scoped via:
+
+    project_id IN (
+      SELECT p.id FROM projects p
+      JOIN organization_members om ON om.organization_id = p.organization_id
+      WHERE om.user_id = auth.uid()
+    )
+
+  This means: a user can only see data for projects belonging to organizations
+  they are a member of. Cross-org access returns zero rows at the DB level.
+
+DATA FLOW (simplified)
+  User authenticates → Supabase Auth JWT →
+  Server action receives request →
+  requirePermission() checks org role →
+  lifecycle guard checks valid transition →
+  Supabase client (with user JWT) executes query →
+  RLS policies enforce org membership →
+  data returned / timeline event written
+
+FILE STRUCTURE (key paths)
+  src/
+    app/                        — Next.js App Router pages
+      (auth)/                   — Login/signup pages
+      (dashboard)/              — Dashboard and projects list
+      (project)/[projectId]/    — Per-project pages
+        work/page.tsx
+        defects/page.tsx
+        quality/page.tsx
+        evidence/page.tsx
+        progress/page.tsx
+    domains/                    — Domain logic by entity
+      work/                     — WorkItem actions, queries, model, validation
+      quality/                  — Defect, Inspection, CorrectiveAction
+      evidence/                 — Evidence actions, queries
+      timeline/                 — TimelineEvent actions, queries
+      project/                  — Project CRUD
+      profiles/                 — User profile queries
+    features/                   — UI feature components
+      map-workspace/            — MapWorkspace (core map UI)
+      work/components/          — Work page UI
+      quality/components/       — Defects and Quality page UI
+      evidence/components/      — Evidence page UI
+    lib/
+      permissions/can-perform.ts — Role permission system
+      supabase/                 — Supabase client factories
+    components/layout/          — Sidebar, header, shell
+  supabase/
+    migrations/                 — All DB migrations (append-only)
+
+================================================================================
+SECTION 4 — DOMAIN MODEL
+================================================================================
+
+ENTITY: organizations
+  The top-level tenant. Every user and project belongs to an organization.
+  Fields: id, name, created_at, updated_at
+
+ENTITY: organization_members
+  Joins a user to an organization with a role.
+  Fields: id, organization_id, user_id, role (OrgRole enum), created_at
+  This is the PRIMARY authorization boundary.
+  RLS for all project-scoped tables traces back through this table.
+
+ENTITY: projects
+  A construction project owned by an organization.
+  Fields: id, organization_id, name, description, status, archived_at,
+          created_at, updated_at
+  Status: active | archived
+  NOTE: No hard delete. Archive strategy only.
+
+ENTITY: project_members
+  Optional: assigns specific users to a project within their org.
+  Exists in schema but is NOT yet the primary authorization boundary.
+  Primary auth boundary remains organization_members.
+
+ENTITY: spatial_nodes
+  Represents a named zone or location within a project site.
+  Implements a hierarchy: site > building > floor/level > zone > area
+  Fields: id, project_id, parent_id, node_type, name, metadata, coordinates
+  Every operational entity can be anchored to a spatial_node.
+  This is what makes the map interface possible.
+
+ENTITY: work_items
+  A discrete unit of construction work within a project.
+  Fields: id, project_id, spatial_node_id, title, description, status,
+          priority, assigned_to, due_date, progress (0-100), metadata,
+          created_at, updated_at
+  Status enum: planned | in_progress | blocked | completed
+  Priority enum: low | medium | high | critical
+
+ENTITY: defects
+  A quality defect identified during inspection or site observation.
+  Fields: id, project_id, spatial_node_id, inspection_id, title, description,
+          severity, status, assigned_to, due_date, closed_at, location_lng,
+          location_lat, metadata, created_at, updated_at
+  Status enum: open | in_progress | pending_reinspection | resolved | closed
+  Severity enum: low | medium | high | critical
+
+ENTITY: corrective_actions
+  A remediation task associated with a defect.
+  Fields: id, project_id, defect_id, spatial_node_id, action_text, status,
+          assigned_to_user_id, due_date, completed_at, metadata,
+          created_at, updated_at
+  Status enum: open | in_progress | completed | cancelled
+
+ENTITY: inspections
+  A formal inspection event for a spatial zone.
+  Fields: id, project_id, spatial_node_id, title, description, status,
+          inspection_type, result, assigned_to, scheduled_date,
+          inspected_date, completed_date, metadata, created_at, updated_at
+  Status enum: scheduled | in_progress | completed
+  Result enum: pass | fail | conditional_pass
+
+ENTITY: evidence
+  A file (photo, video, document) linked to a project entity.
+  Fields: id, project_id, spatial_node_id, work_item_id, defect_id, type,
+          title, description, file_url, thumbnail_url, location_lng,
+          location_lat, captured_by, captured_at, metadata,
+          created_at, updated_at
+  Type enum: photo | video | document
+  Storage bucket: evidence-files
+  Storage path: /{project_id}/{filename}
+
+ENTITY: progress_records
+  Historical snapshots of project progress at a point in time.
+  Fields: id, project_id, spatial_node_id, recorded_by, progress_percent,
+          notes, recorded_at, created_at
+
+ENTITY: timeline_events
+  Append-only audit log of all significant operations within a project.
+  Fields: id, project_id, spatial_node_id, type, title, description,
+          timestamp, metadata, created_at
+  RULES: No UPDATE. No DELETE. Insert only.
+  This is the canonical operational history of the project.
+
+RELATIONSHIPS
+  organizations ←── organization_members ──→ users
+  organizations ──→ projects
+  projects ──→ spatial_nodes (hierarchy)
+  projects ──→ work_items, defects, inspections, evidence, timeline_events
+  inspections ──→ defects (inspection_id FK on defects)
+  defects ──→ corrective_actions (defect_id FK)
+  work_items, defects, spatial_nodes ──→ evidence (foreign keys)
+  all entities ──→ timeline_events (audit trail, via projectId)
+
+================================================================================
+SECTION 5 — WORKFLOW MODEL
+================================================================================
+
+WORK ITEM LIFECYCLE
+  planned → in_progress → completed
+          → blocked     → in_progress
+  Terminal state: completed
+  Blocked is recoverable (→ in_progress).
+  completed is terminal (no transitions out).
+
+  Guard location: src/domains/work/actions/update-work-item.ts
+  ALLOWED_WORK_TRANSITIONS map enforces valid transitions.
+
+DEFECT LIFECYCLE
+  open → in_progress → pending_reinspection → closed
+                     ↑                      ↓
+                     └── in_progress ←── (fail reinspection)
+  resolved → closed  (direct path if resolved without reinspection)
+  Terminal state: closed
+
+  Guard location: src/domains/quality/actions/update-defect-status.ts
+  ALLOWED_TRANSITIONS map enforces valid transitions.
+
+CORRECTIVE ACTION LIFECYCLE
+  open → in_progress → completed
+       → cancelled
+  in_progress → cancelled
+  Terminal states: completed, cancelled
+
+  Guard location: src/domains/quality/actions/update-corrective-action.ts
+  ALLOWED_CA_TRANSITIONS map enforces valid transitions.
+
+INSPECTION LIFECYCLE
+  scheduled → in_progress → completed (with result recorded)
+  Terminal state: completed
+
+  Guard location: src/domains/quality/actions/update-inspection.ts
+  ALLOWED_INSPECTION_TRANSITIONS map enforces valid transitions.
+
+ENTITY CHAIN (canonical quality workflow)
+  1. Inspector creates an Inspection (scheduled)
+  2. Inspection moves to in_progress (inspector arrives on site)
+  3. Inspector finds a problem → creates a Defect (open, linked to inspection)
+  4. Defect is assigned → moves to in_progress
+  5. Engineer creates a CorrectiveAction to fix the defect
+  6. CorrectiveAction moves open → in_progress → completed
+  7. Defect moves to pending_reinspection
+  8. QA inspector re-examines → Defect moves to closed
+  9. All steps write timeline_events (audit trail)
+  10. Inspection result recorded: pass | fail | conditional_pass
+
+PROGRESS TRACKING
+  Work items carry a progress field (0–100).
+  updateWorkProgress() derives status from progress:
+    progress == 0   → planned
+    progress > 0    → in_progress
+    progress == 100 → completed
+  Overall project progress is the average progress across all work items.
+
+================================================================================
+SECTION 6 — PERMISSION MODEL
+================================================================================
+
+FILE: src/lib/permissions/can-perform.ts
+
+ROLES (OrgRole type)
+  owner         — Full access. Organization creator or top-level admin.
+  admin         — Full access. Same as owner for permissions.
+  pm            — Project Manager. Can create/update work, defects, inspections.
+                  Can create projects. Cannot close defects or archive projects.
+  site_manager  — Site Manager. Full operational access. Can complete CAs,
+                  update inspections. Cannot create/archive projects.
+  engineer      — Can update work progress, create/complete corrective actions,
+                  upload evidence. Cannot create work items or defects.
+  qa            — QA Inspector. Full defect and inspection lifecycle.
+                  Can close defects. Can create/complete CAs.
+  safety        — Safety Officer. Can create defects and inspections.
+                  Cannot close defects or complete CAs.
+  planner       — Planner. Can create/update work items, upload evidence.
+                  No defect or inspection access.
+  document      — Document Controller. Can upload evidence only.
+  viewer        — Read only. No write operations permitted.
+  member        — Generic org member. Broad operational access.
+                  (Legacy role, prefer specific roles for new users.)
+
+PERMISSIONS (Permission type)
+  create:work_item          update:work_item          update:work_progress
+  create:defect             update:defect_status      close:defect
+  create:corrective_action  complete:corrective_action
+  create:inspection         update:inspection
+  create:evidence
+  archive:project           create:project
+
+ENFORCEMENT PATTERN
+  Every server action that writes data calls:
+    await requirePermission("permission:name");
+
+  requirePermission() flow:
+    1. Get current user from Supabase auth
+    2. Query organization_members for user's role
+    3. Check ROLE_PERMISSIONS[role].includes(permission)
+    4. Throw "Permission denied: role X cannot perform Y" if not allowed
+
+  This enforces permissions at the service layer, not just the UI.
+  Even if the UI is bypassed (direct API call), permissions are enforced.
+
+WHY ACTION-LAYER ENFORCEMENT
+  RLS enforces data visibility (read/write scope).
+  Action-layer enforces business rules (who can do what operation).
+  These are complementary, not redundant.
+  RLS cannot encode "QA can close defects but engineer cannot" because
+  both roles have the same organization membership and data visibility.
+
+================================================================================
+SECTION 7 — TENANT ISOLATION MODEL
+================================================================================
+
+PRIMARY BOUNDARY: organization
+  Every user belongs to one or more organizations via organization_members.
+  A user can only see/operate on data from projects within their organizations.
+
+RLS STANDARD PATTERN (applied to all project-scoped tables)
+  SELECT/INSERT/UPDATE/DELETE policies check:
+
+    project_id IN (
+      SELECT p.id
+      FROM projects p
+      JOIN organization_members om ON om.organization_id = p.organization_id
+      WHERE om.user_id = auth.uid()
+    )
+
+  This pattern ensures: if auth.uid() has no record in organization_members
+  for the organization that owns the project, zero rows are returned or
+  mutations are rejected.
+
+CROSS-ORG ISOLATION
+  Two organizations (e.g., "Main Contractor" and "Another Org") cannot see
+  each other's projects, work items, defects, or any project-scoped data.
+  This is enforced at the DB level via RLS, not just application logic.
+  Verified during Phase 4 testing.
+
+CRITICAL RULES
+  - NEVER disable RLS on any project-scoped table
+  - NEVER add a policy that bypasses the organization_members check
+  - ALWAYS check for RLS recursion risk before writing new policies
+    (policies that reference tables which themselves have policies
+    referencing the same table can cause infinite recursion)
+  - project_members exists but does NOT replace organization_members as
+    the primary auth boundary (not yet fully implemented)
+
+SUPABASE AUTH INTEGRATION
+  Auth uses JWT tokens. The server-side client (createSupabaseServer) reads
+  the auth cookie to establish the user session. This means:
+  - Server actions use createSupabaseServer() — authenticated with user JWT
+  - createSupabaseBrowser() must NOT be used in server actions (no cookie)
+  - timeline_events uses createSupabaseServer() after Phase 5 fix
+
+================================================================================
+SECTION 8 — TIMELINE AUDIT SYSTEM
+================================================================================
+
+FILE: src/domains/timeline/actions/create-timeline-event.ts
+MODEL: src/domains/timeline/model/timeline-event.ts
+SCHEMA: src/domains/timeline/validation/create-timeline-event-schema.ts
+
+PURPOSE
+  timeline_events is the append-only operational history of every project.
+  It records what happened, when, where (spatialNodeId), and with what
+  metadata. It is the audit trail that makes AMMAP suitable for formal
+  construction quality management.
+
+APPEND-ONLY CONTRACT
+  - No UPDATE on timeline_events (no RLS UPDATE policy exists)
+  - No DELETE on timeline_events (no RLS DELETE policy exists)
+  - All entries are permanent once written
+  This is a product decision, not a technical limitation.
+
+EVENT TYPES (TimelineEventType)
+  construction_start        — project construction begins
+  inspection                — general inspection event
+  inspection_scheduled      — inspection created/scheduled
+  inspection_completed      — inspection marked complete
+  defect_created            — defect opened
+  defect_resolved           — defect closed
+  corrective_action_created — corrective action opened
+  corrective_action_completed — corrective action completed
+  work_item_created         — work item created
+  work_item_started         — work item moved to in_progress
+  work_item_blocked         — work item blocked
+  work_item_completed       — work item completed
+  progress_updated          — progress percentage updated
+  evidence_uploaded         — evidence file uploaded
+  milestone                 — manual milestone marker
+
+WHERE TIMELINE EVENTS ARE WRITTEN
+  createWorkItem            → work_item_created
+  updateWorkProgress        → work_item_started | work_item_completed | progress_updated
+  createDefect              → defect_created
+  updateDefectStatus(closed)→ defect_resolved
+  createCorrectiveAction    → corrective_action_created
+  updateCorrectiveAction(completed) → corrective_action_completed
+  createInspection          → inspection_scheduled
+  updateInspection(completed) → inspection_completed
+  createEvidence            → evidence_uploaded
+
+FIRE-AND-FORGET PATTERN
+  Timeline events are written with .catch(() => {}) after the main operation.
+  This means: if timeline write fails, the main operation still succeeds.
+  The audit trail is best-effort, not transactional.
+  For future hardening: consider wrapping in a DB trigger or transaction.
+
+WHY AUDIT TRAILS MATTER IN CONSTRUCTION
+  Construction defects and quality records are legally significant.
+  Disputes, insurance claims, and certification audits all require evidence
+  that defects were identified, tracked, and resolved in documented sequence.
+  The timeline_events table provides this evidence programmatically.
+
+================================================================================
+SECTION 9 — USER INTERFACE MODEL
+================================================================================
+
+UI SURFACES
+
+  /                         — Root redirect to dashboard
+  /login                    — Auth login page
+  /dashboard                — Project list / dashboard
+  /projects/[id]/map        — Map Workspace (PRIMARY OPERATIONAL CENTER)
+  /projects/[id]/work       — Work Items list with status tabs + progress
+  /projects/[id]/defects    — Defects list with severity filters + lifecycle actions
+  /projects/[id]/quality    — Inspections list with lifecycle actions
+  /projects/[id]/evidence   — Evidence gallery with type filters
+  /projects/[id]/progress   — Progress summary with per-item breakdown
+  /projects/[id]/timeline   — Audit timeline (planned)
+
+MAP WORKSPACE (src/features/map-workspace/map-workspace.tsx)
+  The operational center of the system.
+  Renders all spatial_nodes for a project as interactive zones.
+  Clicking a zone shows associated work items, defects, inspections, evidence.
+  All creation flows (create defect, create work item, etc.) are initiated
+  from the map by selecting a zone first.
+  This is what makes AMMAP map-first rather than list-first.
+
+PROJECT SIDEBAR (src/components/layout/project-sidebar.tsx)
+  Navigation between map and list views within a project.
+  Always visible within the project layout.
+
+WORK PAGE (src/features/work/components/work-page-client.tsx)
+  Server-rendered list of work items. Tabs: All/Planned/In Progress/Blocked/Completed.
+  Shows: title, status badge, priority, progress bar, assignee, due date.
+
+DEFECTS PAGE (src/features/quality/components/defects-page-client.tsx)
+  Server-rendered list of defects. Tabs by status, pills by severity.
+  Inline transition buttons: Start / Request Reinspection / Close.
+  Uses useTransition for optimistic-feel server action calls.
+
+QUALITY PAGE (src/features/quality/components/quality-page-client.tsx)
+  Server-rendered list of inspections.
+  Inline lifecycle buttons: Start / Complete.
+  Shows: title, type, status, result, inspector, scheduled date, completed date.
+
+EVIDENCE PAGE (src/features/evidence/components/evidence-page-client.tsx)
+  Card grid of evidence files. Filter by type: photo/video/document.
+  Shows: title, type, linked entity (defect or work item), captured date.
+  Links to file_url for direct file access.
+
+PROGRESS PAGE (src/features/work/components/progress-page-client.tsx)
+  Summary cards: count by status. Overall progress bar.
+  Per-item breakdown sorted by progress descending.
+
+================================================================================
+SECTION 10 — SECURITY MODEL
+================================================================================
+
+DEFENSE LAYERS (in order)
+  1. RLS (database layer)  — enforces data visibility by org membership
+  2. requirePermission()   — enforces business operation permission by role
+  3. Lifecycle guards      — enforces valid state transitions
+  4. Zod validation        — enforces input shape and value constraints
+  5. UI guards             — hide/disable controls based on role (UX only)
+  Note: UI guards are convenience only. The action layer is the real barrier.
+
+TENANT ISOLATION ATTACKS (tested in Phase 4)
+  Test: User from Org A attempts to read Org B's project data
+  Result: RLS returns zero rows. No data exposed.
+
+  Test: User from Org A attempts to write to Org B's project
+  Result: RLS rejects insert/update. No mutation permitted.
+
+  Test: Viewer role attempts write operation
+  Result: requirePermission() throws "Permission denied" before DB is touched.
+
+  Test: Direct status transition bypass (e.g., open → closed)
+  Result: Lifecycle guard throws "Invalid transition" error.
+
+  Test: Cross-org project_id substitution
+  Result: RLS enforces org boundary regardless of project_id in payload.
+
+KNOWN LIMITATIONS (as of Phase 5)
+  - org_role is not yet checked within RLS policies themselves (only in action layer)
+    This means: a Viewer cannot bypass via UI, but could potentially bypass if
+    they call the Supabase API directly with a valid JWT (RLS would allow the
+    write since RLS only checks org membership, not role).
+  - project_members table exists but is not enforced as auth boundary
+  - No rate limiting on server actions
+  - No CAPTCHA or abuse prevention on auth flows
+  - createEvidence still uses createSupabaseBrowser() for the DB insert
+    (storage upload uses browser client intentionally; DB insert should use server)
+
+SECURITY RULES FOR AI AGENTS
+  - NEVER disable RLS on any table
+  - NEVER add a policy with `true` or no WHERE clause
+  - NEVER add a direct Supabase client call in a server action using createSupabaseBrowser
+  - ALWAYS trace new table policies through the org membership chain
+  - Check for RLS recursion: a policy on table A that queries table B whose
+    policy queries table A will cause infinite recursion
+
+================================================================================
+SECTION 11 — DEVELOPMENT HISTORY
+================================================================================
+
+PHASE 0 — SYSTEM INSPECTION
+  Initial audit of the codebase.
+  Discoveries:
+  - Core schema existed but several tables lacked complete RLS
+  - Server actions existed but had no permission enforcement
+  - Timeline events were created using browser client (wrong)
+  - Five project sub-pages were stubs (placeholder text only)
+  - Mock data fallback mode present throughout (NEXT_PUBLIC_SUPABASE_URL check)
+
+PHASE 1 — OPERATIONAL VERIFICATION
+  Verified that core flows (create project, create work item, create defect)
+  worked end-to-end with Supabase connected.
+  Discovered mock fallback code needed to be preserved for offline dev.
+
+PHASE 2 — DATABASE VALIDATION
+  Reviewed all migrations.
+  Verified RLS policies existed on core tables.
+  Identified missing policies on inspections UPDATE/DELETE and progress_records.
+  Identified potential for RLS recursion in project_members INSERT policy.
+  Applied migration 014 to fix policy symmetry.
+
+PHASE 3 — WORKFLOW SIMULATION
+  Simulated full workflows end-to-end:
+  - Inspection → Defect → Corrective Action → Defect closure
+  - Work item creation → progress update → completion
+  Discovered that defect status transitions had no lifecycle guard.
+  Discovered timeline events were silently failing (browser client in server action).
+
+PHASE 3.5 — CRITICAL FIXES
+  Four critical issues confirmed and fixed:
+  1. Defect lifecycle guard added
+  2. createTimelineEvent switched from browser to server client
+  3. Timeline event type taxonomy expanded
+  4. Evidence domain type fixes
+
+PHASE 4 — SECURITY AND ABUSE TESTING
+  Operated as an adversarial tester.
+  Five attack surfaces tested:
+  1. Cross-tenant data access — blocked by RLS ✓
+  2. Role bypass (viewer writing) — blocked by requirePermission ✓
+  3. Lifecycle bypass (invalid transitions) — blocked by guards ✓
+  4. Storage path traversal — blocked by storage policy ✓
+  5. org_role bypass via direct API — PARTIAL risk identified
+     (RLS does not check org_role, only action layer does)
+  Result: Core isolation solid. Role enforcement has one known gap.
+
+PHASE 5 — PRODUCTION HARDENING
+  Systematic hardening across six workstreams:
+  WS1: Role & Permission Enforcement
+    - Created can-perform.ts with full role/permission matrix
+    - Added requirePermission() to all write actions:
+      createWorkItem, updateWorkItem, updateWorkProgress,
+      createDefect, updateDefectStatus, createCorrectiveAction,
+      updateCorrectiveAction, createInspection, updateInspection,
+      createEvidence, createProject
+  WS2: Project Assignment Model
+    - Decision: org-wide Model A retained (no project_members enforcement yet)
+    - Documented as known limitation for future phase
+  WS3: Workflow Lifecycle Hardening
+    - Work item transition guard added (updateWorkItem)
+    - Corrective action transition guard added (updateCorrectiveAction)
+    - Inspection transition guard added (updateInspection)
+    - Defect transition guard was added in Phase 3.5 (confirmed present)
+  WS4: Timeline Audit Trail
+    - TimelineEventType expanded from 5 → 15 event types
+    - Timeline events wired to all write actions
+    - createTimelineEvent fixed to use createSupabaseServer (not browser)
+  WS5: UI Surface Completion
+    - Work page: real list with status tabs, priority, progress bar
+    - Defects page: real list with severity filters, inline lifecycle actions
+    - Quality page: real inspections list with inline lifecycle actions
+    - Evidence page: card grid with type filters, file links
+    - Progress page: summary cards + overall bar + per-item breakdown
+  WS6: Safety fixes
+    - createTimelineEvent browser client bug fixed
+
+================================================================================
+SECTION 12 — CURRENT SYSTEM STATE
+================================================================================
+
+PRODUCTION-READY COMPONENTS
+  ✓ Multi-tenant RLS isolation (organization boundary)
+  ✓ Supabase Auth integration
+  ✓ Work item CRUD and lifecycle
+  ✓ Defect CRUD and lifecycle (with guards)
+  ✓ Corrective action CRUD and lifecycle (with guards)
+  ✓ Inspection CRUD and lifecycle (with guards)
+  ✓ Evidence upload and query
+  ✓ Timeline event audit trail (append-only)
+  ✓ Role-based permission system (action layer)
+  ✓ All five project sub-pages render real data
+  ✓ Map workspace renders spatial zones
+  ✓ Project creation, listing, archiving
+
+STILL EVOLVING
+  ~ org_role not checked within RLS policies (action layer only)
+  ~ project_members not enforced as auth boundary
+  ~ No inline work item creation from Work page (only from map)
+  ~ No inline defect creation from Defects page (only from map)
+  ~ Progress page shows derived progress from work_items, not progress_records
+  ~ Evidence upload is map-workspace-only (no standalone upload form on Evidence page)
+  ~ No pagination on list pages (all items loaded)
+  ~ No real-time updates (Supabase realtime not wired)
+  ~ Mobile/responsive layout not fully optimized
+  ~ No notification system
+
+KNOWN LIMITATIONS
+  1. Viewer role bypass via direct Supabase API call (no RLS role check)
+  2. createEvidence still uses browser client for DB insert (server action should use server client)
+  3. Mock fallback mode present throughout codebase (NEXT_PUBLIC_SUPABASE_URL guard)
+     — intentional for offline dev, must be removed before production deploy
+  4. No rate limiting on server actions
+  5. Timeline writes are fire-and-forget (audit trail not transactional)
+  6. project_members table exists but is unused as auth boundary
+  7. No full-text search across operational entities
+
+================================================================================
+SECTION 13 — DESIGN PRINCIPLES
+================================================================================
+
+MAP-FIRST WORKFLOW
+  Every operational entity is anchored to a spatial zone.
+  The map workspace is the primary entry point, not a supplementary view.
+  Zone selection filters all downstream data.
+
+DOMAIN-DRIVEN DESIGN
+  Code is organized by domain (work, quality, evidence, timeline, project).
+  Each domain has: model/, actions/, queries/, validation/ subdirectories.
+  Cross-domain dependencies are explicit (e.g., quality actions import timeline).
+
+AUDITABILITY BY DEFAULT
+  Every meaningful write operation emits a timeline event.
+  Timeline is append-only and permanent.
+  This is not optional — it is a core system contract.
+
+LIFECYCLE ENFORCEMENT AT SERVICE LAYER
+  State transitions are enforced in server actions, not just UI.
+  The UI may show/hide buttons, but the server action is the gate.
+  Invalid transitions throw errors with explicit messages.
+
+TENANT ISOLATION ABOVE ALL
+  No feature is worth weakening tenant isolation.
+  RLS is the last line of defense.
+  If a feature requires relaxing RLS, the feature design must change.
+
+SERVER ACTIONS AS THE API
+  There is no separate REST/GraphQL API layer.
+  Next.js server actions ARE the backend API.
+  All writes go through server actions with "use server" directive.
+  Direct Supabase client calls from client components are read-only queries.
+
+EXPLICIT OVER IMPLICIT
+  Errors are thrown with descriptive messages (never silent failures).
+  Permission denials name the role and permission.
+  Lifecycle violations name the current state, target state, and allowed transitions.
+
+AI-ASSISTED DEVELOPMENT
+  This system has been built with AI pair programming assistance.
+  Context files like this one are a first-class artifact.
+  All AI-suggested code is reviewed against the architecture rules in Section 10.
+
+================================================================================
+SECTION 14 — HOW AN AI SHOULD INTERACT WITH THIS CODEBASE
+================================================================================
+
+MANDATORY RULES (never violate)
+
+  1. NEVER disable RLS on any table.
+     Not even temporarily. Not even for testing.
+
+  2. NEVER write a policy that uses `true` as its condition.
+     All policies must trace to auth.uid() via organization_members.
+
+  3. NEVER modify existing migrations.
+     Always create a NEW migration file. Migrations are append-only.
+
+  4. NEVER use createSupabaseBrowser() inside a server action.
+     Server actions must use createSupabaseServer() (cookie-based auth).
+
+  5. NEVER write data directly to Supabase from client components.
+     All writes go through server actions.
+
+  6. NEVER add a write operation without calling requirePermission() first.
+
+  7. NEVER allow a lifecycle transition without checking against the
+     ALLOWED_TRANSITIONS map for that entity type.
+
+  8. NEVER weaken cross-tenant isolation for convenience.
+     If a feature requires seeing other orgs' data, redesign the feature.
+
+SAFE DEVELOPMENT PATTERNS
+
+  Adding a new write operation:
+    a. Create a server action file with "use server" at top
+    b. Import and call requirePermission() with appropriate permission
+    c. Add lifecycle guard if the operation changes a status field
+    d. Perform the Supabase insert/update using createSupabaseServer()
+    e. Emit a timeline event after the write (.catch(() => {}))
+    f. Return the created/updated entity
+
+  Adding a new table:
+    a. Create a new migration (never modify existing)
+    b. Add RLS: enable RLS + add policies following the org membership pattern
+    c. Add SELECT/INSERT/UPDATE/DELETE policies as needed
+    d. Update database.types.ts to reflect new schema
+    e. Create domain model type in TypeScript
+    f. Add query and action files following existing patterns
+
+  Adding a new role or permission:
+    a. Add to OrgRole or Permission type in can-perform.ts
+    b. Update ROLE_PERMISSIONS map
+    c. Add permission checks to relevant actions
+
+  Debugging a permission error:
+    a. Check ROLE_PERMISSIONS in can-perform.ts
+    b. Check the requirePermission() call in the action
+    c. Verify the user's role in organization_members table
+
+  Debugging a lifecycle error:
+    a. Check the ALLOWED_TRANSITIONS map in the action file
+    b. Verify the current status of the entity in the DB
+    c. Verify the target status is in the allowed list
+
+VERIFICATION CHECKLIST BEFORE ANY PR
+  □ New table has RLS enabled with org membership policy
+  □ New write action has requirePermission() call
+  □ New state-changing action has lifecycle guard
+  □ New write action emits timeline event
+  □ No existing migrations modified
+  □ database.types.ts updated if schema changed
+  □ No createSupabaseBrowser() in any server action
+  □ Tenant isolation unchanged
+
+================================================================================
+SECTION 15 — FUTURE EVOLUTION
+================================================================================
+
+NEAR-TERM (Phase 6 candidates)
+  - Inline entity creation from list pages (not just map)
+  - Real-time updates via Supabase Realtime subscriptions
+  - Pagination and infinite scroll on list pages
+  - org_role enforcement within RLS policies (close the Phase 4 gap)
+  - project_members as opt-in project-level access control
+  - Email notifications for defect assignment and lifecycle changes
+  - Evidence upload directly from Evidence page (not just map)
+
+MEDIUM-TERM
+  - Mobile-optimized field app (PWA or React Native)
+  - Offline capture mode (IndexedDB queue + sync on reconnect)
+  - Bulk operations (bulk close defects, bulk assign work items)
+  - Advanced filtering and full-text search
+  - Reporting: defect summary, inspection pass rate, work completion
+  - Export to PDF for formal quality reports
+
+LONG-TERM PLATFORM VISION
+  - Multi-project dashboard with cross-project analytics
+  - AI inspection assistance: photo analysis to detect defects automatically
+  - Schedule integration: link work items to Gantt/CPM schedule
+  - Document management: drawings, specs, submittals linked to zones
+  - IoT integration: sensors on site reporting to spatial nodes
+  - Subcontractor portal: external tenant access with scoped isolation
+  - BIM integration: 3D model zones mapped to spatial_nodes
+  - Automated compliance checking against inspection checklists
+  - Predictive defect hotspot analysis from historical data
+
+ARCHITECTURAL EVOLUTION CONSTRAINTS
+  Any platform evolution must:
+  - Preserve tenant isolation as the non-negotiable foundation
+  - Maintain the append-only contract on timeline_events
+  - Route all writes through server actions with permission guards
+  - Respect the domain-driven file structure
+  - Add new migrations; never modify existing ones
+  - Keep the map as the primary operational interface
+
+================================================================================
+END OF DOCUMENT
+AMMAP_AI_CONTEXT_MASTER_v1.txt
+Version 1.0 — March 2026
+================================================================================
