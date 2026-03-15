@@ -8,7 +8,7 @@ import type { ProjectMetrics } from "@/domains/dashboard/model/project-metrics";
 export interface DashboardState {
   health: ProjectHealth | null;
   metrics: ProjectMetrics | null;
-  riskSummary: { zoneId: string; defectCount: number; severity: string }[];
+  riskSummary: { zoneId: string; zoneName: string; defectCount: number; severity: string }[];
   loading: boolean;
   error: string | null;
 }

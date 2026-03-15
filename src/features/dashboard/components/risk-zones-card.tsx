@@ -2,6 +2,7 @@ import { cn } from "@/lib/cn";
 
 interface RiskZone {
   zoneId: string;
+  zoneName: string;
   defectCount: number;
   severity: string;
 }
@@ -72,7 +73,7 @@ export function RiskZonesCard({ riskSummary }: RiskZonesCardProps) {
                 <span
                   className={cn("h-2.5 w-2.5 shrink-0 rounded-full", style.dot)}
                 />
-                <span className="flex-1 text-sm text-slate-700">{zone.zoneId}</span>
+                <span className="flex-1 text-sm text-slate-700">{zone.zoneName}</span>
                 <span className="text-xs text-slate-400">
                   {zone.defectCount} defect{zone.defectCount !== 1 ? "s" : ""}
                 </span>

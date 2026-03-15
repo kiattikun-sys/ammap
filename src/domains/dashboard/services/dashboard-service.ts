@@ -112,8 +112,15 @@ export class DashboardService {
 
   async getRiskSummary(
     projectId: string
-  ): Promise<{ zoneId: string; defectCount: number; severity: string }[]> {
-    const defects = await listDefects({ projectId });
+  ): Promise<{ zoneId: string; zoneName: string; defectCount: number; severity: string }[]> {
+    const [defects, spatialNodes] = await Promise.all([
+      listDefects({ projectId }),
+      listSpatialNodes({ projectId }),
+    ]);
+
+    const nodeNameMap = new Map<string, string>(
+      spatialNodes.map((n) => [n.id, n.name])
+    );
 
     const zoneMap = new Map<
       string,
@@ -135,6 +142,7 @@ export class DashboardService {
 
     return Array.from(zoneMap.entries()).map(([zoneId, data]) => ({
       zoneId,
+      zoneName: nodeNameMap.get(zoneId) ?? zoneId,
       defectCount: data.defectCount,
       severity: data.hasCritical ? "critical" : data.hasHigh ? "high" : "medium",
     }));
@@ -283,12 +291,17 @@ export class DashboardService {
 
   async getOrgRiskSummary(
     projectIds: string[]
-  ): Promise<{ zoneId: string; defectCount: number; severity: string }[]> {
+  ): Promise<{ zoneId: string; zoneName: string; defectCount: number; severity: string }[]> {
     if (projectIds.length === 0) return [];
 
-    const allDefects: Defect[] = (
-      await Promise.all(projectIds.map((id) => listDefects({ projectId: id })))
-    ).flat();
+    const [allDefects, allNodes] = await Promise.all([
+      Promise.all(projectIds.map((id) => listDefects({ projectId: id }))).then((r) => r.flat()),
+      Promise.all(projectIds.map((id) => listSpatialNodes({ projectId: id }))).then((r) => r.flat()),
+    ]);
+
+    const nodeNameMap = new Map<string, string>(
+      allNodes.map((n) => [n.id, n.name])
+    );
 
     const zoneMap = new Map<
       string,
@@ -310,6 +323,7 @@ export class DashboardService {
 
     return Array.from(zoneMap.entries()).map(([zoneId, data]) => ({
       zoneId,
+      zoneName: nodeNameMap.get(zoneId) ?? zoneId,
       defectCount: data.defectCount,
       severity: data.hasCritical ? "critical" : data.hasHigh ? "high" : "medium",
     }));
