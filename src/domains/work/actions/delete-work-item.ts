@@ -1,10 +1,17 @@
 "use server";
 
-import { MOCK_WORK_ITEMS } from "../model/mock-work-data";
+import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 export async function deleteWorkItem(id: string): Promise<void> {
-  const existing = MOCK_WORK_ITEMS.find((w) => w.id === id);
-  if (!existing) throw new Error(`WorkItem "${id}" not found`);
+  await requirePermission("delete:work_item");
 
-  console.log("[deleteWorkItem] Deleted (mock):", id);
+  const db = (await createSupabaseServer()) as any;
+
+  const { error } = await db
+    .from("work_items")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw new Error(`deleteWorkItem: ${error.message}`);
 }

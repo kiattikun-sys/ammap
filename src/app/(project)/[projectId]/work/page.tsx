@@ -1,5 +1,6 @@
-import { listWorkItems } from "@/domains/work/queries/list-work-items";
-import { listOrgProfiles } from "@/domains/profiles/queries/list-org-profiles";
+import { listWorkItemsServer } from "@/domains/work/queries/list-work-items-server";
+import type { ListWorkItemsFilter } from "@/domains/work/queries/list-work-items";
+import { listOrgProfilesServer } from "@/domains/profiles/queries/list-org-profiles-server";
 import { WorkPageClient } from "@/features/work/components/work-page-client";
 
 interface Props {
@@ -9,11 +10,11 @@ interface Props {
 
 export default async function ProjectWorkPage({ params, searchParams }: Props) {
   const { projectId } = params;
-  const statusFilter = searchParams.status as Parameters<typeof listWorkItems>[0]["status"] | undefined;
+  const statusFilter = searchParams.status as ListWorkItemsFilter["status"] | undefined;
 
   const [items, profiles] = await Promise.all([
-    listWorkItems({ projectId, status: statusFilter }),
-    listOrgProfiles(),
+    listWorkItemsServer({ projectId, status: statusFilter }),
+    listOrgProfilesServer(),
   ]);
 
   return (

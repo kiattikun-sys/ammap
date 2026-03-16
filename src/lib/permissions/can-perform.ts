@@ -17,9 +17,11 @@ export type Permission =
   | "create:work_item"
   | "update:work_item"
   | "update:work_progress"
+  | "delete:work_item"
   | "create:defect"
   | "update:defect_status"
   | "close:defect"
+  | "delete:defect"
   | "create:corrective_action"
   | "complete:corrective_action"
   | "create:inspection"
@@ -30,32 +32,32 @@ export type Permission =
 
 const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
   owner: [
-    "create:work_item", "update:work_item", "update:work_progress",
-    "create:defect", "update:defect_status", "close:defect",
+    "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
+    "create:defect", "update:defect_status", "close:defect", "delete:defect",
     "create:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
     "archive:project", "create:project",
   ],
   admin: [
-    "create:work_item", "update:work_item", "update:work_progress",
-    "create:defect", "update:defect_status", "close:defect",
+    "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
+    "create:defect", "update:defect_status", "close:defect", "delete:defect",
     "create:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
     "archive:project", "create:project",
   ],
   pm: [
-    "create:work_item", "update:work_item", "update:work_progress",
-    "create:defect", "update:defect_status",
+    "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
+    "create:defect", "update:defect_status", "delete:defect",
     "create:corrective_action",
     "create:inspection",
     "create:evidence",
     "create:project",
   ],
   site_manager: [
-    "create:work_item", "update:work_item", "update:work_progress",
-    "create:defect", "update:defect_status",
+    "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
+    "create:defect", "update:defect_status", "delete:defect",
     "create:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",

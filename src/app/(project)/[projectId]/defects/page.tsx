@@ -1,5 +1,6 @@
-import { listDefects } from "@/domains/quality/queries/list-defects";
-import { listOrgProfiles } from "@/domains/profiles/queries/list-org-profiles";
+import { listDefectsServer } from "@/domains/quality/queries/list-defects-server";
+import type { ListDefectsFilter } from "@/domains/quality/queries/list-defects";
+import { listOrgProfilesServer } from "@/domains/profiles/queries/list-org-profiles-server";
 import { DefectsPageClient } from "@/features/quality/components/defects-page-client";
 
 interface Props {
@@ -11,12 +12,12 @@ export default async function ProjectDefectsPage({ params, searchParams }: Props
   const { projectId } = params;
 
   const [defects, profiles] = await Promise.all([
-    listDefects({
+    listDefectsServer({
       projectId,
-      status: searchParams.status as Parameters<typeof listDefects>[0]["status"] | undefined,
-      severity: searchParams.severity as Parameters<typeof listDefects>[0]["severity"] | undefined,
+      status: searchParams.status as ListDefectsFilter["status"] | undefined,
+      severity: searchParams.severity as ListDefectsFilter["severity"] | undefined,
     }),
-    listOrgProfiles(),
+    listOrgProfilesServer(),
   ]);
 
   return (

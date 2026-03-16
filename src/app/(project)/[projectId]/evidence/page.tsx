@@ -1,4 +1,5 @@
-import { listEvidence } from "@/domains/evidence/queries/list-evidence";
+import { listEvidenceServer } from "@/domains/evidence/queries/list-evidence-server";
+import type { ListEvidenceFilter } from "@/domains/evidence/queries/list-evidence";
 import { EvidencePageClient } from "@/features/evidence/components/evidence-page-client";
 
 interface Props {
@@ -9,9 +10,9 @@ interface Props {
 export default async function ProjectEvidencePage({ params, searchParams }: Props) {
   const { projectId } = params;
 
-  const items = await listEvidence({
+  const items = await listEvidenceServer({
     projectId,
-    type: searchParams.type as Parameters<typeof listEvidence>[0]["type"] | undefined,
+    type: searchParams.type as ListEvidenceFilter["type"] | undefined,
   });
 
   return (

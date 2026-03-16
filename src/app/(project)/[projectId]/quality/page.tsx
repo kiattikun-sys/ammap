@@ -1,5 +1,6 @@
-import { listInspections } from "@/domains/quality/queries/list-inspections";
-import { listOrgProfiles } from "@/domains/profiles/queries/list-org-profiles";
+import { listInspectionsServer } from "@/domains/quality/queries/list-inspections-server";
+import type { ListInspectionsFilter } from "@/domains/quality/queries/list-inspections";
+import { listOrgProfilesServer } from "@/domains/profiles/queries/list-org-profiles-server";
 import { QualityPageClient } from "@/features/quality/components/quality-page-client";
 
 interface Props {
@@ -11,11 +12,11 @@ export default async function ProjectQualityPage({ params, searchParams }: Props
   const { projectId } = params;
 
   const [inspections, profiles] = await Promise.all([
-    listInspections({
+    listInspectionsServer({
       projectId,
-      status: searchParams.status as Parameters<typeof listInspections>[0]["status"] | undefined,
+      status: searchParams.status as ListInspectionsFilter["status"] | undefined,
     }),
-    listOrgProfiles(),
+    listOrgProfilesServer(),
   ]);
 
   return (

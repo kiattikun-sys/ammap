@@ -1,0 +1,53 @@
+import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import type { WorkItem, WorkStatus, WorkPriority } from "../model/work-item";
+import { MOCK_WORK_ITEMS } from "../model/mock-work-data";
+import type { ListWorkItemsFilter } from "./list-work-items";
+
+function rowToWorkItem(row: Record<string, unknown>): WorkItem {
+  const prog = (row.progress as number) ?? 0;
+  return {
+    id: row.id as string,
+    projectId: row.project_id as string,
+    spatialNodeId: (row.spatial_node_id as string | null) ?? null,
+    title: row.title as string,
+    description: (row.description as string | null) ?? null,
+    status: row.status as WorkStatus,
+    priority: row.priority as WorkPriority,
+    assignedTo: (row.assigned_to as string | null) ?? null,
+    dueDate: row.due_date ? new Date(row.due_date as string) : null,
+    progress: prog,
+    progressPercent: prog,
+    metadata: (row.metadata as Record<string, unknown>) ?? {},
+    createdAt: new Date(row.created_at as string),
+    updatedAt: new Date(row.updated_at as string),
+  };
+}
+
+export async function listWorkItemsServer(
+  filter: ListWorkItemsFilter
+): Promise<WorkItem[]> {
+  const limit = filter.limit ?? 50;
+  const offset = filter.offset ?? 0;
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    let items = MOCK_WORK_ITEMS.filter((w) => w.projectId === filter.projectId);
+    if (filter.status !== undefined) items = items.filter((w) => w.status === filter.status);
+    if (filter.assignedTo !== undefined) items = items.filter((w) => w.assignedTo === filter.assignedTo);
+    return items.slice(offset, offset + limit);
+  }
+
+  const db = (await createSupabaseServer()) as any;
+  let query = db
+    .from("work_items")
+    .select("*")
+    .eq("project_id", filter.projectId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (filter.status !== undefined) query = query.eq("status", filter.status);
+  if (filter.assignedTo !== undefined) query = query.eq("assigned_to", filter.assignedTo);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`listWorkItemsServer: ${error.message}`);
+  return (data ?? []).map((r: Record<string, unknown>) => rowToWorkItem(r));
+}

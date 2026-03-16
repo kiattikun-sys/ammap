@@ -1,10 +1,17 @@
 "use server";
 
-import { MOCK_DEFECTS } from "../model/mock-quality-data";
+import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 export async function deleteDefect(id: string): Promise<void> {
-  const existing = MOCK_DEFECTS.find((d) => d.id === id);
-  if (!existing) throw new Error(`Defect "${id}" not found`);
+  await requirePermission("delete:defect");
 
-  console.log("[deleteDefect] Deleted (mock):", id);
+  const db = (await createSupabaseServer()) as any;
+
+  const { error } = await db
+    .from("defects")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw new Error(`deleteDefect: ${error.message}`);
 }
