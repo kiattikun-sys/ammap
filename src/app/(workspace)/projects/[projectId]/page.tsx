@@ -87,7 +87,7 @@ export default function ProjectWorkspacePage() {
         </Link>
 
         <Link
-          href={`/projects/${projectId}/evidence`}
+          href={`/${projectId}/evidence`}
           className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
         >
           <span className="text-2xl">📷</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Project } from "@/domains/project/model";
 import { ProjectCard } from "./project-card";
 import { CreateProjectForm } from "./create-project-form";
@@ -12,15 +13,15 @@ interface Props {
 }
 
 export function ProjectsPageClient({ initialProjects }: Props) {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   function handleArchived(projectId: string) {
     setProjects((prev) => prev.filter((p) => p.id !== projectId));
   }
 
   function handleCreated() {
-    setRefreshKey((k) => k + 1);
+    router.refresh();
   }
 
   return (
@@ -47,7 +48,7 @@ export function ProjectsPageClient({ initialProjects }: Props) {
         <CreateProjectForm onCreated={handleCreated} />
       </div>
 
-      {projects.length === 0 && refreshKey === 0 ? (
+      {projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 py-16 text-center">
           <p className="text-sm font-medium text-slate-600">No projects yet</p>
           <p className="mt-1 text-xs text-slate-400">

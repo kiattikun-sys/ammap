@@ -37,7 +37,7 @@ export default async function ProjectDocumentsPage({ params }: Props) {
           <p className="mt-1 text-sm text-slate-500">{project.name}</p>
         </div>
         <Link
-          href={`/projects/${projectId}/evidence`}
+          href={`/${projectId}/evidence`}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
           Upload Evidence

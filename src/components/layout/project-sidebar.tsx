@@ -22,6 +22,7 @@ import { cn } from "@/lib/cn";
 
 interface ProjectSidebarProps {
   projectId: string;
+  projectName?: string;
 }
 
 interface NavItem {
@@ -31,7 +32,7 @@ interface NavItem {
 }
 
 function buildNavItems(projectId: string): NavItem[] {
-  const base = `/projects/${projectId}`;
+  const base = `/${projectId}`;
 
   return [
     {
@@ -97,7 +98,7 @@ function buildNavItems(projectId: string): NavItem[] {
   ];
 }
 
-export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectId, projectName }: ProjectSidebarProps) {
   const pathname = usePathname();
   const navItems = buildNavItems(projectId);
 
@@ -118,7 +119,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
           Project
         </p>
         <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
-          {projectId}
+          {projectName ?? projectId.slice(0, 8) + "…"}
         </p>
       </div>
 

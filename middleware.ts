@@ -1,16 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/supabase-middleware";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/map", "/projects"];
+const PROTECTED_PREFIXES = ["/dashboard", "/projects"];
 const AUTH_PAGES = ["/login", "/signup", "/register"];
+
+// Matches /{uuid}/{anything} — project-scoped routes
+const PROJECT_ROUTE_RE = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
 
 export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request);
   const pathname = request.nextUrl.pathname;
 
-  const isProtected = PROTECTED_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix)
-  ) || /^\/[^/]+\/map/.test(pathname);
+  const isProtected =
+    PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    PROJECT_ROUTE_RE.test(pathname);
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
 

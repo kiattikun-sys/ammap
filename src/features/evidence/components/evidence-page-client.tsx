@@ -55,8 +55,8 @@ export function EvidencePageClient({
         {TYPE_TABS.map((tab) => {
           const isActive = activeType === tab.value;
           const href = (tab.value
-            ? `/projects/${projectId}/evidence?type=${tab.value}`
-            : `/projects/${projectId}/evidence`) as Route;
+            ? `/${projectId}/evidence?type=${tab.value}`
+            : `/${projectId}/evidence`) as Route;
           return (
             <Link
               key={tab.value ?? "all"}

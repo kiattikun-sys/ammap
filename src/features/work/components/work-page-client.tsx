@@ -69,8 +69,8 @@ export function WorkPageClient({
         {STATUS_TABS.map((tab) => {
           const isActive = activeStatus === tab.value;
           const href = (tab.value
-            ? `/projects/${projectId}/work?status=${tab.value}`
-            : `/projects/${projectId}/work`) as Route;
+            ? `/${projectId}/work?status=${tab.value}`
+            : `/${projectId}/work`) as Route;
           return (
             <Link
               key={tab.value ?? "all"}

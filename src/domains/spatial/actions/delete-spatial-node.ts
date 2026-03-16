@@ -1,8 +1,10 @@
 "use server";
 
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 export async function deleteSpatialNode(id: string): Promise<void> {
+  await requirePermission("delete:spatial_node");
   const db = (await createSupabaseServer()) as any;
 
   const { count, error: countError } = await db

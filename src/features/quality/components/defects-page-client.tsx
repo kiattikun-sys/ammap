@@ -152,8 +152,8 @@ export function DefectsPageClient({
           {STATUS_TABS.map((tab) => {
             const isActive = activeStatus === tab.value;
             const href = (tab.value
-              ? `/projects/${projectId}/defects?status=${tab.value}${activeSeverity ? `&severity=${activeSeverity}` : ""}`
-              : `/projects/${projectId}/defects${activeSeverity ? `?severity=${activeSeverity}` : ""}`) as Route;
+              ? `/${projectId}/defects?status=${tab.value}${activeSeverity ? `&severity=${activeSeverity}` : ""}`
+              : `/${projectId}/defects${activeSeverity ? `?severity=${activeSeverity}` : ""}`) as Route;
             return (
               <Link
                 key={tab.value ?? "all"}
@@ -174,8 +174,8 @@ export function DefectsPageClient({
           {SEVERITY_FILTERS.map((f) => {
             const isActive = activeSeverity === f.value;
             const href = (f.value
-              ? `/projects/${projectId}/defects?severity=${f.value}${activeStatus ? `&status=${activeStatus}` : ""}`
-              : `/projects/${projectId}/defects${activeStatus ? `?status=${activeStatus}` : ""}`) as Route;
+              ? `/${projectId}/defects?severity=${f.value}${activeStatus ? `&status=${activeStatus}` : ""}`
+              : `/${projectId}/defects${activeStatus ? `?status=${activeStatus}` : ""}`) as Route;
             return (
               <Link
                 key={f.value ?? "all-sev"}

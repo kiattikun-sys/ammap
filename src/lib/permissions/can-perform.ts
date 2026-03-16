@@ -27,6 +27,8 @@ export type Permission =
   | "create:inspection"
   | "update:inspection"
   | "create:evidence"
+  | "create:spatial_node"
+  | "delete:spatial_node"
   | "archive:project"
   | "create:project";
 
@@ -37,6 +39,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
     "create:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
+    "create:spatial_node", "delete:spatial_node",
     "archive:project", "create:project",
   ],
   admin: [
@@ -45,6 +48,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
     "create:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
+    "create:spatial_node", "delete:spatial_node",
     "archive:project", "create:project",
   ],
   pm: [
@@ -53,6 +57,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
     "create:corrective_action",
     "create:inspection",
     "create:evidence",
+    "create:spatial_node", "delete:spatial_node",
     "create:project",
   ],
   site_manager: [
@@ -61,6 +66,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
     "create:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
+    "create:spatial_node", "delete:spatial_node",
   ],
   engineer: [
     "update:work_item", "update:work_progress",

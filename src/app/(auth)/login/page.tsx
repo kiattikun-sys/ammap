@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import type { Route } from "next";
 import { signIn } from "@/domains/auth/services/auth-service";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      router.push("/dashboard");
+      const next = searchParams.get("next");
+      router.push((next && next.startsWith("/") ? next : "/dashboard") as Route);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");

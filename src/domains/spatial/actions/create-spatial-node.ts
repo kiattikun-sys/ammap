@@ -3,11 +3,13 @@
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import type { SpatialNode } from "../model/spatial-node";
 import { createSpatialNodeSchema, type CreateSpatialNodeInput } from "../validation/create-spatial-node-schema";
+import { requirePermission } from "@/lib/permissions/can-perform";
 
 export async function createSpatialNode(
   projectId: string,
   input: CreateSpatialNodeInput
 ): Promise<SpatialNode> {
+  await requirePermission("create:spatial_node");
   const validated = createSpatialNodeSchema.parse(input);
   const db = (await createSupabaseServer()) as any;
 

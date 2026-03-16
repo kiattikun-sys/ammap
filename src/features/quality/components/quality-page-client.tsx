@@ -148,8 +148,8 @@ export function QualityPageClient({
         {STATUS_TABS.map((tab) => {
           const isActive = activeStatus === tab.value;
           const href = (tab.value
-            ? `/projects/${projectId}/quality?status=${tab.value}`
-            : `/projects/${projectId}/quality`) as Route;
+            ? `/${projectId}/quality?status=${tab.value}`
+            : `/${projectId}/quality`) as Route;
           return (
             <Link
               key={tab.value ?? "all"}
