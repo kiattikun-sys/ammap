@@ -5,7 +5,7 @@ import {
   createEvidenceSchema,
   type CreateEvidenceInput,
 } from "../validation/create-evidence-schema";
-import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
+import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import { requirePermission } from "@/lib/permissions/can-perform";
 import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
 
@@ -41,7 +41,7 @@ export async function createEvidence(
     return evidence;
   }
 
-  const db = createSupabaseBrowser();
+  const db = (await createSupabaseServer()) as any;
 
   const insertPayload = {
     project_id: projectId,

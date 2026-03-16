@@ -82,6 +82,8 @@ export async function createProject(formData: FormData): Promise<Project> {
 export async function archiveProject(projectId: string): Promise<void> {
   if (!projectId) throw new Error("projectId is required");
 
+  await requirePermission("archive:project");
+
   const supabase = await createSupabaseServer();
 
   const {
@@ -91,16 +93,11 @@ export async function archiveProject(projectId: string): Promise<void> {
 
   const { data: membership } = await supabase
     .from("organization_members")
-    .select("organization_id, role")
+    .select("organization_id")
     .eq("user_id", user.id)
     .single();
 
-  const role = (membership as { role: string } | null)?.role;
-  if (!role || !(["owner", "admin"] as string[]).includes(role)) {
-    throw new Error("Only organization owners and admins can archive projects");
-  }
-
-  const orgId = (membership as { organization_id: string; role: string } | null)?.organization_id;
+  const orgId = (membership as { organization_id: string } | null)?.organization_id;
   if (!orgId) throw new Error("No organization found");
 
   const db = supabase as any;

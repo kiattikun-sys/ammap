@@ -5,6 +5,13 @@ import type { WorkItem } from "../model/work-item";
 import { requirePermission } from "@/lib/permissions/can-perform";
 import { createTimelineEvent } from "@/domains/timeline/actions/create-timeline-event";
 
+const ALLOWED_PROGRESS_TRANSITIONS: Record<string, string[]> = {
+  planned: ["planned", "in_progress"],
+  in_progress: ["in_progress", "completed"],
+  blocked: ["in_progress"],
+  completed: [],
+};
+
 export async function updateWorkProgress(
   id: string,
   progressPercent: number
@@ -14,11 +21,28 @@ export async function updateWorkProgress(
     throw new Error("Progress must be between 0 and 100");
   }
 
-  const status =
+  const targetStatus =
     progressPercent === 100 ? "completed" :
     progressPercent > 0 ? "in_progress" : "planned";
 
   const db = (await createSupabaseServer()) as any;
+
+  const { data: current, error: fetchErr } = await db
+    .from("work_items")
+    .select("status")
+    .eq("id", id)
+    .single();
+  if (fetchErr) throw new Error(`updateWorkProgress: ${fetchErr.message}`);
+
+  const currentStatus = (current as { status: string }).status;
+  const allowed = ALLOWED_PROGRESS_TRANSITIONS[currentStatus] ?? [];
+  if (!allowed.includes(targetStatus)) {
+    throw new Error(
+      `Invalid work item transition: ${currentStatus} → ${targetStatus}. Allowed: ${allowed.join(", ") || "none"}`
+    );
+  }
+
+  const status = targetStatus;
 
   const { data, error } = await db
     .from("work_items")
