@@ -13,7 +13,7 @@ export async function uploadEvidenceFile(
   const supabase = createSupabaseBrowser();
   const fileId = crypto.randomUUID();
   const ext = file.name.split(".").pop() ?? "bin";
-  const filePath = `projects/${projectId}/evidence/${fileId}.${ext}`;
+  const filePath = `${projectId}/${fileId}.${ext}`;
 
   const { error } = await supabase.storage
     .from("evidence-files")
