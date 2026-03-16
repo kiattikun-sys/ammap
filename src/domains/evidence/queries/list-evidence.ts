@@ -5,6 +5,8 @@ import { createSupabaseBrowser } from "@/lib/supabase/supabase-browser";
 export interface ListEvidenceFilter {
   projectId: string;
   type?: EvidenceType;
+  limit?: number;
+  offset?: number;
 }
 
 function rowToEvidence(row: Record<string, unknown>): Evidence {
@@ -32,14 +34,23 @@ function rowToEvidence(row: Record<string, unknown>): Evidence {
 export async function listEvidence(
   filter: ListEvidenceFilter
 ): Promise<Evidence[]> {
+  const limit = filter.limit ?? 50;
+  const offset = filter.offset ?? 0;
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     let items = MOCK_EVIDENCE.filter((e) => e.projectId === filter.projectId);
     if (filter.type !== undefined) items = items.filter((e) => e.type === filter.type);
-    return items;
+    return items.slice(offset, offset + limit);
   }
 
   const db = createSupabaseBrowser();
-  let query = db.from("evidence").select("*").eq("project_id", filter.projectId);
+  let query = db
+    .from("evidence")
+    .select("*")
+    .eq("project_id", filter.projectId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
   if (filter.type !== undefined) query = query.eq("type", filter.type);
 
   const { data, error } = await query;

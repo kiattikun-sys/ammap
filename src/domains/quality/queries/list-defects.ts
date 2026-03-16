@@ -7,6 +7,8 @@ export interface ListDefectsFilter {
   status?: DefectStatus;
   severity?: DefectSeverity;
   inspectionId?: string;
+  limit?: number;
+  offset?: number;
 }
 
 function rowToDefect(row: Record<string, unknown>): Defect {
@@ -33,16 +35,25 @@ function rowToDefect(row: Record<string, unknown>): Defect {
 export async function listDefects(
   filter: ListDefectsFilter
 ): Promise<Defect[]> {
+  const limit = filter.limit ?? 50;
+  const offset = filter.offset ?? 0;
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     let items = MOCK_DEFECTS.filter((d) => d.projectId === filter.projectId);
     if (filter.status !== undefined) items = items.filter((d) => d.status === filter.status);
     if (filter.severity !== undefined) items = items.filter((d) => d.severity === filter.severity);
     if (filter.inspectionId !== undefined) items = items.filter((d) => d.inspectionId === filter.inspectionId);
-    return items;
+    return items.slice(offset, offset + limit);
   }
 
   const db = createSupabaseBrowser();
-  let query = db.from("defects").select("*").eq("project_id", filter.projectId);
+  let query = db
+    .from("defects")
+    .select("*")
+    .eq("project_id", filter.projectId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
   if (filter.status !== undefined) query = query.eq("status", filter.status);
   if (filter.severity !== undefined) query = query.eq("severity", filter.severity);
   if (filter.inspectionId !== undefined) query = query.eq("inspection_id", filter.inspectionId);

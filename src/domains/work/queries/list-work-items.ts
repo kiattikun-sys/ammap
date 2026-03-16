@@ -6,6 +6,15 @@ export interface ListWorkItemsFilter {
   projectId: string;
   status?: WorkStatus;
   assignedTo?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaginatedWorkItems {
+  items: WorkItem[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 function rowToWorkItem(row: Record<string, unknown>): WorkItem {
@@ -31,15 +40,24 @@ function rowToWorkItem(row: Record<string, unknown>): WorkItem {
 export async function listWorkItems(
   filter: ListWorkItemsFilter
 ): Promise<WorkItem[]> {
+  const limit = filter.limit ?? 50;
+  const offset = filter.offset ?? 0;
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     let items = MOCK_WORK_ITEMS.filter((w) => w.projectId === filter.projectId);
     if (filter.status !== undefined) items = items.filter((w) => w.status === filter.status);
     if (filter.assignedTo !== undefined) items = items.filter((w) => w.assignedTo === filter.assignedTo);
-    return items;
+    return items.slice(offset, offset + limit);
   }
 
   const db = createSupabaseBrowser();
-  let query = db.from("work_items").select("*").eq("project_id", filter.projectId);
+  let query = db
+    .from("work_items")
+    .select("*")
+    .eq("project_id", filter.projectId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
   if (filter.status !== undefined) query = query.eq("status", filter.status);
   if (filter.assignedTo !== undefined) query = query.eq("assigned_to", filter.assignedTo);
 

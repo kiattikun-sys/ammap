@@ -7,6 +7,8 @@ export interface ListTimelineEventsFilter {
   type?: TimelineEventType;
   from?: Date;
   to?: Date;
+  limit?: number;
+  offset?: number;
 }
 
 function rowToTimelineEvent(row: Record<string, unknown>): TimelineEvent {
@@ -27,12 +29,17 @@ function rowToTimelineEvent(row: Record<string, unknown>): TimelineEvent {
 export async function listTimelineEvents(
   filter: ListTimelineEventsFilter
 ): Promise<TimelineEvent[]> {
+  const limit = filter.limit ?? 50;
+  const offset = filter.offset ?? 0;
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     let items = MOCK_TIMELINE_EVENTS.filter((e) => e.projectId === filter.projectId);
     if (filter.type !== undefined) items = items.filter((e) => e.type === filter.type);
     if (filter.from !== undefined) items = items.filter((e) => e.timestamp >= filter.from!);
     if (filter.to !== undefined) items = items.filter((e) => e.timestamp <= filter.to!);
-    return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    return items
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(offset, offset + limit);
   }
 
   const db = createSupabaseBrowser();
@@ -40,7 +47,9 @@ export async function listTimelineEvents(
     .from("timeline_events")
     .select("*")
     .eq("project_id", filter.projectId)
-    .order("timestamp");
+    .order("timestamp", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (filter.type !== undefined) query = query.eq("type", filter.type);
   if (filter.from !== undefined) query = query.gte("timestamp", filter.from.toISOString());

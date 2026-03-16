@@ -1,111 +1,66 @@
 import type { ProjectHealth } from "../model/project-health";
 import type { ProjectMetrics } from "../model/project-metrics";
-import { listWorkItems } from "@/domains/work/queries/list-work-items";
-import { listDefects } from "@/domains/quality/queries/list-defects";
-import { listEvidence } from "@/domains/evidence/queries/list-evidence";
-import { listTimelineEvents } from "@/domains/timeline/queries/list-timeline-events";
 import { listSpatialNodes } from "@/domains/spatial/queries/list-spatial-nodes";
-import type { WorkItem, WorkStatus } from "@/domains/work/model/work-item";
-import type { Defect, DefectSeverity } from "@/domains/quality/model/defect";
+import {
+  getWorkItemStatusCounts,
+  getWorkItemProgressStats,
+  getDefectStatusCounts,
+  getDefectSeverityCounts,
+  getRiskZoneRows,
+  getTableCount,
+  getWorkItemsByZone,
+} from "../queries/dashboard-aggregations";
 
 export class DashboardService {
   async getProjectHealth(projectId: string): Promise<ProjectHealth> {
-    const [tasks, defects] = await Promise.all([
-      listWorkItems({ projectId }),
-      listDefects({ projectId }),
+    const projectIds = [projectId];
+    const [progressStats, defectCounts, riskZoneRows] = await Promise.all([
+      getWorkItemProgressStats(projectIds),
+      getDefectStatusCounts(projectIds),
+      getRiskZoneRows(projectIds),
     ]);
-
-    const completedTasks = tasks.filter((t) => t.status === "completed").length;
-    const totalProgress =
-      tasks.length > 0
-        ? Math.round(
-            tasks.reduce((sum, t) => sum + t.progress, 0) / tasks.length
-          )
-        : 0;
-
-    const openDefects = defects.filter(
-      (d) => d.status === "open" || d.status === "in_progress"
-    ).length;
-    const criticalDefects = defects.filter(
-      (d) => d.severity === "critical" && d.status !== "closed"
-    ).length;
-
-    const riskZones = [
-      ...new Set(
-        defects
-          .filter((d) => d.severity === "critical" || d.severity === "high")
-          .map((d) => d.spatialNodeId)
-          .filter((id): id is string => id !== null)
-      ),
-    ];
 
     return {
       projectId,
-      overallProgress: totalProgress,
-      totalTasks: tasks.length,
-      completedTasks,
-      openDefects,
-      criticalDefects,
-      riskZones,
+      overallProgress: progressStats.overallProgress,
+      totalTasks: progressStats.totalTasks,
+      completedTasks: progressStats.completedTasks,
+      openDefects: defectCounts.openDefects,
+      criticalDefects: defectCounts.criticalDefects,
+      riskZones: riskZoneRows.map((r) => r.zoneId),
       lastUpdated: new Date(),
     };
   }
 
   async getProjectMetrics(projectId: string): Promise<ProjectMetrics> {
-    const [tasks, defects, evidence, events, zones] = await Promise.all([
-      listWorkItems({ projectId }),
-      listDefects({ projectId }),
-      listEvidence({ projectId }),
-      listTimelineEvents({ projectId }),
-      listSpatialNodes({ projectId, type: "zone" }),
+    const projectIds = [projectId];
+    const [
+      tasksByStatus,
+      defectsBySeverity,
+      progressStats,
+      evidenceCount,
+      timelineEvents,
+      zonesActive,
+      tasksByZone,
+    ] = await Promise.all([
+      getWorkItemStatusCounts(projectIds),
+      getDefectSeverityCounts(projectIds),
+      getWorkItemProgressStats(projectIds),
+      getTableCount("evidence", projectIds),
+      getTableCount("timeline_events", projectIds),
+      getTableCount("spatial_nodes", projectIds, { column: "type", value: "zone" }),
+      getWorkItemsByZone(projectIds),
     ]);
-
-    const tasksByStatus: Record<WorkStatus, number> = {
-      planned: 0,
-      in_progress: 0,
-      blocked: 0,
-      completed: 0,
-    };
-    for (const t of tasks) {
-      tasksByStatus[t.status] = (tasksByStatus[t.status] ?? 0) + 1;
-    }
-
-    const defectsBySeverity: Record<DefectSeverity, number> = {
-      low: 0,
-      medium: 0,
-      high: 0,
-      critical: 0,
-    };
-    for (const d of defects) {
-      defectsBySeverity[d.severity] = (defectsBySeverity[d.severity] ?? 0) + 1;
-    }
-
-    const now = new Date();
-    const overdueTasks = tasks.filter(
-      (t) => t.status !== "completed" && t.dueDate && t.dueDate < now
-    ).length;
-
-    const completionRate =
-      tasks.length > 0
-        ? Math.round((tasks.filter((t) => t.status === "completed").length / tasks.length) * 100)
-        : 0;
-
-    const tasksByZone: Record<string, number> = {};
-    for (const t of tasks) {
-      if (t.spatialNodeId) {
-        tasksByZone[t.spatialNodeId] = (tasksByZone[t.spatialNodeId] ?? 0) + 1;
-      }
-    }
 
     return {
       projectId,
       tasksByStatus,
       defectsBySeverity,
-      evidenceCount: evidence.length,
-      timelineEvents: events.length,
-      zonesActive: zones.length,
-      overdueTasks,
-      completionRate,
+      evidenceCount,
+      timelineEvents,
+      zonesActive,
+      overdueTasks: progressStats.overdueTasks,
+      completionRate: progressStats.completionRate,
       tasksByZone,
     };
   }
@@ -113,8 +68,8 @@ export class DashboardService {
   async getRiskSummary(
     projectId: string
   ): Promise<{ zoneId: string; zoneName: string; defectCount: number; severity: string }[]> {
-    const [defects, spatialNodes] = await Promise.all([
-      listDefects({ projectId }),
+    const [riskZoneRows, spatialNodes] = await Promise.all([
+      getRiskZoneRows([projectId]),
       listSpatialNodes({ projectId }),
     ]);
 
@@ -122,29 +77,11 @@ export class DashboardService {
       spatialNodes.map((n) => [n.id, n.name])
     );
 
-    const zoneMap = new Map<
-      string,
-      { defectCount: number; hasCritical: boolean; hasHigh: boolean }
-    >();
-
-    for (const d of defects) {
-      if (!d.spatialNodeId) continue;
-      const existing = zoneMap.get(d.spatialNodeId) ?? {
-        defectCount: 0,
-        hasCritical: false,
-        hasHigh: false,
-      };
-      existing.defectCount++;
-      if (d.severity === "critical") existing.hasCritical = true;
-      if (d.severity === "high") existing.hasHigh = true;
-      zoneMap.set(d.spatialNodeId, existing);
-    }
-
-    return Array.from(zoneMap.entries()).map(([zoneId, data]) => ({
-      zoneId,
-      zoneName: nodeNameMap.get(zoneId) ?? zoneId,
-      defectCount: data.defectCount,
-      severity: data.hasCritical ? "critical" : data.hasHigh ? "high" : "medium",
+    return riskZoneRows.map((row) => ({
+      zoneId: row.zoneId,
+      zoneName: nodeNameMap.get(row.zoneId) ?? row.zoneId,
+      defectCount: row.defectCount,
+      severity: row.hasCritical ? "critical" : row.hasHigh ? "high" : "medium",
     }));
   }
 
@@ -162,44 +99,20 @@ export class DashboardService {
       };
     }
 
-    const results = await Promise.all(
-      projectIds.map((id) =>
-        Promise.all([listWorkItems({ projectId: id }), listDefects({ projectId: id })])
-      )
-    );
-
-    const allTasks: WorkItem[] = results.flatMap(([tasks]) => tasks);
-    const allDefects: Defect[] = results.flatMap(([, defects]) => defects);
-
-    const completedTasks = allTasks.filter((t) => t.status === "completed").length;
-    const totalProgress =
-      allTasks.length > 0
-        ? Math.round(allTasks.reduce((sum, t) => sum + t.progress, 0) / allTasks.length)
-        : 0;
-
-    const openDefects = allDefects.filter(
-      (d) => d.status === "open" || d.status === "in_progress"
-    ).length;
-    const criticalDefects = allDefects.filter(
-      (d) => d.severity === "critical" && d.status !== "closed"
-    ).length;
-    const riskZones = [
-      ...new Set(
-        allDefects
-          .filter((d) => d.severity === "critical" || d.severity === "high")
-          .map((d) => d.spatialNodeId)
-          .filter((id): id is string => id !== null)
-      ),
-    ];
+    const [progressStats, defectCounts, riskZoneRows] = await Promise.all([
+      getWorkItemProgressStats(projectIds),
+      getDefectStatusCounts(projectIds),
+      getRiskZoneRows(projectIds),
+    ]);
 
     return {
       projectId: "org",
-      overallProgress: totalProgress,
-      totalTasks: allTasks.length,
-      completedTasks,
-      openDefects,
-      criticalDefects,
-      riskZones,
+      overallProgress: progressStats.overallProgress,
+      totalTasks: progressStats.totalTasks,
+      completedTasks: progressStats.completedTasks,
+      openDefects: defectCounts.openDefects,
+      criticalDefects: defectCounts.criticalDefects,
+      riskZones: riskZoneRows.map((r) => r.zoneId),
       lastUpdated: new Date(),
     };
   }
@@ -219,72 +132,33 @@ export class DashboardService {
       };
     }
 
-    const results = await Promise.all(
-      projectIds.map((id) =>
-        Promise.all([
-          listWorkItems({ projectId: id }),
-          listDefects({ projectId: id }),
-          listEvidence({ projectId: id }),
-          listTimelineEvents({ projectId: id }),
-          listSpatialNodes({ projectId: id, type: "zone" }),
-        ])
-      )
-    );
-
-    const allTasks: WorkItem[] = results.flatMap(([tasks]) => tasks);
-    const allDefects: Defect[] = results.flatMap(([, defects]) => defects);
-    const totalEvidence = results.reduce((s, [, , ev]) => s + ev.length, 0);
-    const totalEvents = results.reduce((s, [, , , ev]) => s + ev.length, 0);
-    const totalZones = results.reduce((s, [, , , , z]) => s + z.length, 0);
-
-    const tasksByStatus: Record<WorkStatus, number> = {
-      planned: 0,
-      in_progress: 0,
-      blocked: 0,
-      completed: 0,
-    };
-    for (const t of allTasks) {
-      tasksByStatus[t.status] = (tasksByStatus[t.status] ?? 0) + 1;
-    }
-
-    const defectsBySeverity: Record<DefectSeverity, number> = {
-      low: 0,
-      medium: 0,
-      high: 0,
-      critical: 0,
-    };
-    for (const d of allDefects) {
-      defectsBySeverity[d.severity] = (defectsBySeverity[d.severity] ?? 0) + 1;
-    }
-
-    const now = new Date();
-    const overdueTasks = allTasks.filter(
-      (t) => t.status !== "completed" && t.dueDate && t.dueDate < now
-    ).length;
-
-    const completionRate =
-      allTasks.length > 0
-        ? Math.round(
-            (allTasks.filter((t) => t.status === "completed").length / allTasks.length) * 100
-          )
-        : 0;
-
-    const tasksByZone: Record<string, number> = {};
-    for (const t of allTasks) {
-      if (t.spatialNodeId) {
-        tasksByZone[t.spatialNodeId] = (tasksByZone[t.spatialNodeId] ?? 0) + 1;
-      }
-    }
+    const [
+      tasksByStatus,
+      defectsBySeverity,
+      progressStats,
+      evidenceCount,
+      timelineEvents,
+      zonesActive,
+      tasksByZone,
+    ] = await Promise.all([
+      getWorkItemStatusCounts(projectIds),
+      getDefectSeverityCounts(projectIds),
+      getWorkItemProgressStats(projectIds),
+      getTableCount("evidence", projectIds),
+      getTableCount("timeline_events", projectIds),
+      getTableCount("spatial_nodes", projectIds, { column: "type", value: "zone" }),
+      getWorkItemsByZone(projectIds),
+    ]);
 
     return {
       projectId: "org",
       tasksByStatus,
       defectsBySeverity,
-      evidenceCount: totalEvidence,
-      timelineEvents: totalEvents,
-      zonesActive: totalZones,
-      overdueTasks,
-      completionRate,
+      evidenceCount,
+      timelineEvents,
+      zonesActive,
+      overdueTasks: progressStats.overdueTasks,
+      completionRate: progressStats.completionRate,
       tasksByZone,
     };
   }
@@ -294,8 +168,8 @@ export class DashboardService {
   ): Promise<{ zoneId: string; zoneName: string; defectCount: number; severity: string }[]> {
     if (projectIds.length === 0) return [];
 
-    const [allDefects, allNodes] = await Promise.all([
-      Promise.all(projectIds.map((id) => listDefects({ projectId: id }))).then((r) => r.flat()),
+    const [riskZoneRows, allNodes] = await Promise.all([
+      getRiskZoneRows(projectIds),
       Promise.all(projectIds.map((id) => listSpatialNodes({ projectId: id }))).then((r) => r.flat()),
     ]);
 
@@ -303,29 +177,11 @@ export class DashboardService {
       allNodes.map((n) => [n.id, n.name])
     );
 
-    const zoneMap = new Map<
-      string,
-      { defectCount: number; hasCritical: boolean; hasHigh: boolean }
-    >();
-
-    for (const d of allDefects) {
-      if (!d.spatialNodeId) continue;
-      const existing = zoneMap.get(d.spatialNodeId) ?? {
-        defectCount: 0,
-        hasCritical: false,
-        hasHigh: false,
-      };
-      existing.defectCount++;
-      if (d.severity === "critical") existing.hasCritical = true;
-      if (d.severity === "high") existing.hasHigh = true;
-      zoneMap.set(d.spatialNodeId, existing);
-    }
-
-    return Array.from(zoneMap.entries()).map(([zoneId, data]) => ({
-      zoneId,
-      zoneName: nodeNameMap.get(zoneId) ?? zoneId,
-      defectCount: data.defectCount,
-      severity: data.hasCritical ? "critical" : data.hasHigh ? "high" : "medium",
+    return riskZoneRows.map((row) => ({
+      zoneId: row.zoneId,
+      zoneName: nodeNameMap.get(row.zoneId) ?? row.zoneId,
+      defectCount: row.defectCount,
+      severity: row.hasCritical ? "critical" : row.hasHigh ? "high" : "medium",
     }));
   }
 }
