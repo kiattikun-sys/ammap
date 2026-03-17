@@ -8,6 +8,7 @@ import type { SpatialNodeType } from "@/domains/spatial/model/spatial-node";
 import type { SpatialNode } from "@/domains/spatial/model/spatial-node";
 import { SpatialDrawingToolbar } from "./spatial-drawing-toolbar";
 import { SpatialNodeModal } from "@/features/spatial/components/spatial-node-modal";
+import { AssignLocationModal } from "@/features/spatial/components/assign-location-modal";
 
 export interface DrawState {
   activeType: SpatialNodeType | null;
@@ -19,8 +20,11 @@ interface SpatialDrawingControllerProps {
   projectId: string;
   existingNodes: SpatialNode[];
   onNodeCreated: (node: SpatialNode) => void;
+  onNodeUpdated?: (node: SpatialNode) => void;
   onDrawStateChange?: (state: DrawState) => void;
   hideToolbar?: boolean;
+  /** When set: draw mode assigns geometry to this existing node, never creates a new one */
+  assignToNode?: SpatialNode | null;
 }
 
 interface PendingDraw {
@@ -32,8 +36,10 @@ export function SpatialDrawingController({
   projectId,
   existingNodes,
   onNodeCreated,
+  onNodeUpdated,
   onDrawStateChange,
   hideToolbar = false,
+  assignToNode = null,
 }: SpatialDrawingControllerProps) {
   const { map, isLoaded } = useMap();
   const drawRef = useRef<MapboxDraw | null>(null);
@@ -103,21 +109,22 @@ export function SpatialDrawingController({
     });
   }, [activeType, isLoaded, handleStartDrawing, handleCancelDrawing]);
 
-  function handleModalSaved(node: SpatialNode) {
+  function clearPending() {
     if (drawRef.current && pending) {
       drawRef.current.delete(pending.drawFeatureId);
     }
     setPending(null);
     setActiveType(null);
+  }
+
+  function handleCreateSaved(node: SpatialNode) {
+    clearPending();
     onNodeCreated(node);
   }
 
-  function handleModalCancel() {
-    if (drawRef.current && pending) {
-      drawRef.current.delete(pending.drawFeatureId);
-    }
-    setPending(null);
-    setActiveType(null);
+  function handleAssignSaved(node: SpatialNode) {
+    clearPending();
+    onNodeUpdated?.(node);
   }
 
   if (!isLoaded) return null;
@@ -132,14 +139,25 @@ export function SpatialDrawingController({
         />
       )}
 
-      {pending && activeType && (
+      {/* Assign geometry to EXISTING node — never creates a new node */}
+      {pending && assignToNode && (
+        <AssignLocationModal
+          node={assignToNode}
+          geometry={pending.geometry}
+          onSaved={handleAssignSaved}
+          onCancel={clearPending}
+        />
+      )}
+
+      {/* Create NEW node with geometry — only when not in assign mode */}
+      {pending && activeType && !assignToNode && (
         <SpatialNodeModal
           projectId={projectId}
           nodeType={activeType}
           geometry={pending.geometry}
           existingNodes={existingNodes}
-          onSaved={handleModalSaved}
-          onCancel={handleModalCancel}
+          onSaved={handleCreateSaved}
+          onCancel={clearPending}
         />
       )}
     </>
