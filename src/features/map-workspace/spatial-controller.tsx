@@ -34,6 +34,31 @@ export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onN
     });
   }, [projectId]);
 
+  // Auto fit-bounds to all nodes with geometry when map first loads
+  useEffect(() => {
+    if (!map || !isLoaded || nodes.length === 0) return;
+
+    const allCoords: number[][] = [];
+    for (const node of nodes) {
+      if (!node.geometry) continue;
+      const geom = node.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon;
+      if (geom.type === "Polygon") {
+        allCoords.push(...geom.coordinates[0]);
+      } else if (geom.type === "MultiPolygon") {
+        for (const poly of geom.coordinates) allCoords.push(...poly[0]);
+      }
+    }
+    if (allCoords.length === 0) return;
+
+    const lngs = allCoords.map((c) => c[0]);
+    const lats = allCoords.map((c) => c[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 80, duration: 800, maxZoom: 18 }
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, isLoaded]);
+
   useEffect(() => {
     if (!map || !isLoaded) return;
 
