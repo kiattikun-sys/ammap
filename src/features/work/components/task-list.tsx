@@ -166,7 +166,7 @@ function TaskCard({
         {task.dueDate && (
           <span className={isOverdue ? "text-red-500 font-medium" : ""}>
             📅 {isOverdue ? "Overdue · " : ""}
-            {task.dueDate.toLocaleDateString()}
+            {task.dueDate.toLocaleDateString("en-CA")}
           </span>
         )}
         <span className="truncate">👤 {resolveAssignee(task.assignedTo)}</span>

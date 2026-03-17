@@ -29,7 +29,7 @@ export function ProjectCard({ project, onArchived }: ProjectCardProps) {
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-400">
-            Created {project.createdAt.toLocaleDateString()}
+            Created {project.createdAt.toLocaleDateString("en-CA")}
           </span>
           <div className="flex gap-2">
             <button

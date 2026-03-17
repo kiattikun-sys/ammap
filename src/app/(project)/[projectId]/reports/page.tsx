@@ -76,8 +76,8 @@ export default async function ProjectReportsPage({ params }: Props) {
         <ReportSection title="Evidence & Audit">
           <Row label="Evidence Files" value={evidenceCount} />
           <Row label="Timeline Events" value={timelineCount} />
-          <Row label="Project Created" value={project.createdAt.toLocaleDateString()} />
-          <Row label="Last Updated" value={project.updatedAt.toLocaleDateString()} />
+          <Row label="Project Created" value={project.createdAt.toLocaleDateString("en-CA")} />
+          <Row label="Last Updated" value={project.updatedAt.toLocaleDateString("en-CA")} />
           <Row label="Status" value={project.status} />
         </ReportSection>
 

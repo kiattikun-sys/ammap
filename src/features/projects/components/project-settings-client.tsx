@@ -60,16 +60,16 @@ export function ProjectSettingsClient({ project }: Props) {
             </div>
             <div className="flex items-start justify-between gap-4">
               <dt className="text-slate-500">Created</dt>
-              <dd className="text-slate-700">{project.createdAt.toLocaleDateString()}</dd>
+              <dd className="text-slate-700">{project.createdAt.toLocaleDateString("en-CA")}</dd>
             </div>
             <div className="flex items-start justify-between gap-4">
               <dt className="text-slate-500">Last updated</dt>
-              <dd className="text-slate-700">{project.updatedAt.toLocaleDateString()}</dd>
+              <dd className="text-slate-700">{project.updatedAt.toLocaleDateString("en-CA")}</dd>
             </div>
             {isArchived && project.archivedAt && (
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-slate-500">Archived</dt>
-                <dd className="text-amber-600">{project.archivedAt.toLocaleDateString()}</dd>
+                <dd className="text-amber-600">{project.archivedAt.toLocaleDateString("en-CA")}</dd>
               </div>
             )}
           </dl>

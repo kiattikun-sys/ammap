@@ -106,7 +106,7 @@ export function EvidenceGallery({
               <div className="p-2">
                 <p className="truncate text-xs font-medium text-slate-700">{item.title}</p>
                 <p className="text-[10px] text-slate-400">
-                  {item.createdAt.toLocaleDateString()}
+                  {item.createdAt.toLocaleDateString("en-CA")}
                 </p>
               </div>
             </button>
@@ -167,7 +167,7 @@ export function EvidenceGallery({
             <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400">
               <span>{TYPE_ICONS[selected.type]} {selected.type}</span>
               {selected.capturedAt && (
-                <span>📅 {selected.capturedAt.toLocaleDateString()}</span>
+                <span>📅 {selected.capturedAt.toLocaleDateString("en-CA")}</span>
               )}
               {selected.locationLat != null && selected.locationLng != null && (
                 <span>📍 {selected.locationLat.toFixed(5)}, {selected.locationLng.toFixed(5)}</span>

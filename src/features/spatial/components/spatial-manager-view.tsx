@@ -113,8 +113,8 @@ function NodeDetailPanel({
         <MetaCard label="Order" value={String(node.order)} />
         <MetaCard label="Has Geometry" value={node.geometry ? "Yes" : "No"} />
         <MetaCard label="Children" value={String(children.length)} />
-        <MetaCard label="Created" value={node.createdAt.toLocaleDateString()} />
-        <MetaCard label="Updated" value={node.updatedAt.toLocaleDateString()} />
+        <MetaCard label="Created" value={node.createdAt.toLocaleDateString("en-CA")} />
+        <MetaCard label="Updated" value={node.updatedAt.toLocaleDateString("en-CA")} />
       </div>
 
       {/* Children list */}

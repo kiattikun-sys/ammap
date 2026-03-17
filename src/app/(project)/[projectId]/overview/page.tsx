@@ -57,7 +57,7 @@ export default async function ProjectOverviewPage({ params }: Props) {
             {project.status}
           </span>
           <span className="text-xs text-slate-400">
-            Created {project.createdAt.toLocaleDateString()}
+            Created {project.createdAt.toLocaleDateString("en-CA")}
           </span>
         </div>
       </div>
@@ -154,7 +154,7 @@ export default async function ProjectOverviewPage({ params }: Props) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-slate-800">{event.title}</p>
                   <p className="text-xs text-slate-400">
-                    {event.timestamp.toLocaleDateString()} · {event.type.replace(/_/g, " ")}
+                    {event.timestamp.toLocaleDateString("en-CA")} · {event.type.replace(/_/g, " ")}
                   </p>
                 </div>
               </li>

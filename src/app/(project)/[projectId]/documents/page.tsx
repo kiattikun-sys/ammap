@@ -78,7 +78,7 @@ export default async function ProjectDocumentsPage({ params }: Props) {
                         {item.title}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-400">
-                        {item.createdAt.toLocaleDateString()}
+                        {item.createdAt.toLocaleDateString("en-CA")}
                       </p>
                     </div>
                   </a>

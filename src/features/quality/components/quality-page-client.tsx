@@ -90,12 +90,12 @@ function InspectionRow({
       </td>
       <td className="px-4 py-3 text-xs text-slate-500">
         {inspection.scheduledDate
-          ? new Date(inspection.scheduledDate).toLocaleDateString()
+          ? new Date(inspection.scheduledDate).toLocaleDateString("en-CA")
           : "—"}
       </td>
       <td className="px-4 py-3 text-xs text-slate-500">
         {inspection.completedDate
-          ? new Date(inspection.completedDate).toLocaleDateString()
+          ? new Date(inspection.completedDate).toLocaleDateString("en-CA")
           : "—"}
       </td>
       <td className="px-4 py-3">

@@ -145,7 +145,7 @@ export function DefectDetailPanel({ defect, onClose, onUpdated }: DefectDetailPa
               <span className="text-slate-400">Due</span>
               <span className={isOverdue ? "font-medium text-red-500" : "text-slate-600"}>
                 {isOverdue ? "Overdue · " : ""}
-                {defect.dueDate.toLocaleDateString()}
+                {defect.dueDate.toLocaleDateString("en-CA")}
               </span>
             </div>
           )}
@@ -158,12 +158,12 @@ export function DefectDetailPanel({ defect, onClose, onUpdated }: DefectDetailPa
           {defect.closedAt && (
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400">Closed</span>
-              <span className="text-slate-600">{defect.closedAt.toLocaleDateString()}</span>
+              <span className="text-slate-600">{defect.closedAt.toLocaleDateString("en-CA")}</span>
             </div>
           )}
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400">Created</span>
-            <span className="text-slate-600">{defect.createdAt.toLocaleDateString()}</span>
+            <span className="text-slate-600">{defect.createdAt.toLocaleDateString("en-CA")}</span>
           </div>
         </div>
 
@@ -235,7 +235,7 @@ export function DefectDetailPanel({ defect, onClose, onUpdated }: DefectDetailPa
                   )}
                   {ca.dueDate && (
                     <p className="mb-1.5 text-[10px] text-slate-400">
-                      📅 {ca.dueDate.toLocaleDateString()}
+                      📅 {ca.dueDate.toLocaleDateString("en-CA")}
                     </p>
                   )}
                   {ca.status !== "completed" && ca.status !== "cancelled" && (

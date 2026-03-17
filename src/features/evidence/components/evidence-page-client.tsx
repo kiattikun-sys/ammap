@@ -110,7 +110,7 @@ export function EvidencePageClient({
                   {item.capturedAt && (
                     <div className="flex justify-between">
                       <span className="text-slate-400">Captured</span>
-                      <span>{new Date(item.capturedAt).toLocaleDateString()}</span>
+                      <span>{new Date(item.capturedAt).toLocaleDateString("en-CA")}</span>
                     </div>
                   )}
                 </div>

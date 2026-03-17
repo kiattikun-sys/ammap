@@ -156,7 +156,7 @@ export function WorkPageClient({
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
                       {item.dueDate
-                        ? new Date(item.dueDate).toLocaleDateString()
+                        ? new Date(item.dueDate).toLocaleDateString("en-CA")
                         : "—"}
                     </td>
                   </tr>

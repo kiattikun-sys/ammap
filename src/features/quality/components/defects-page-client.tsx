@@ -96,7 +96,7 @@ function DefectRow({
         {resolveAssignee(profiles, defect.assignedTo)}
       </td>
       <td className="px-4 py-3 text-xs text-slate-500">
-        {defect.dueDate ? new Date(defect.dueDate).toLocaleDateString() : "—"}
+        {defect.dueDate ? new Date(defect.dueDate).toLocaleDateString("en-CA") : "—"}
       </td>
       <td className="px-4 py-3">
         {nextStatus ? (

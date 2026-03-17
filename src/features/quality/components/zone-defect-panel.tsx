@@ -139,7 +139,7 @@ export function ZoneDefectPanel({ projectId, zoneId, onDefectMutated }: ZoneDefe
                   <p className={`mt-1 text-[10px] ${
                     d.status !== "closed" && new Date() > d.dueDate ? "text-red-500 font-medium" : "text-slate-400"
                   }`}>
-                    📅 {d.dueDate.toLocaleDateString()}
+                    📅 {d.dueDate.toLocaleDateString("en-CA")}
                   </p>
                 )}
               </button>
