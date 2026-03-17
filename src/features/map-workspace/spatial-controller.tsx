@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type mapboxgl from "mapbox-gl";
 import { useMap } from "@/lib/map";
 import { LayerManager } from "@/lib/map/layers";
@@ -26,6 +26,7 @@ interface SpatialControllerProps {
 export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onNodesChange, onDrawStateChange }: SpatialControllerProps) {
   const { map, isLoaded } = useMap();
   const [nodes, setNodes] = useState<SpatialNode[]>([]);
+  const hasFitRef = useRef(false);
 
   useEffect(() => {
     listSpatialNodes({ projectId }).then((n) => {
@@ -34,9 +35,9 @@ export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onN
     });
   }, [projectId]);
 
-  // Auto fit-bounds to all nodes with geometry when map first loads
+  // Auto fit-bounds once when both map and nodes are ready
   useEffect(() => {
-    if (!map || !isLoaded || nodes.length === 0) return;
+    if (!map || !isLoaded || nodes.length === 0 || hasFitRef.current) return;
 
     const allCoords: number[][] = [];
     for (const node of nodes) {
@@ -50,14 +51,14 @@ export function SpatialController({ projectId, selectedNodeId, onZoneSelect, onN
     }
     if (allCoords.length === 0) return;
 
+    hasFitRef.current = true;
     const lngs = allCoords.map((c) => c[0]);
     const lats = allCoords.map((c) => c[1]);
     map.fitBounds(
       [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
       { padding: 80, duration: 800, maxZoom: 18 }
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, isLoaded]);
+  }, [map, isLoaded, nodes]);
 
   useEffect(() => {
     if (!map || !isLoaded) return;
