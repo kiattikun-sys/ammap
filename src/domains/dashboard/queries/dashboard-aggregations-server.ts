@@ -9,10 +9,12 @@ import type {
   RiskZoneRow,
 } from "./dashboard-aggregations";
 
-type StatusCountRow = { status: string; count: string };
-type SeverityCountRow = { severity: string; count: string };
-type ZoneDefectRow = { spatial_node_id: string; severity: string; count: string };
+type StatusRow = { status: string };
+type SeverityRow = { severity: string };
+type StatusSeverityRow = { status: string; severity: string };
+type ZoneDefectRow = { spatial_node_id: string; severity: string };
 type ProgressRow = { progress: number; status: string; due_date: string | null };
+type IdRow = { id: string };
 
 export async function getWorkItemStatusCountsServer(
   projectIds: string[]
@@ -25,14 +27,14 @@ export async function getWorkItemStatusCountsServer(
   const db = (await createSupabaseServer()) as any;
   const { data, error } = await db
     .from("work_items")
-    .select("status, count:id.count()")
+    .select("status")
     .in("project_id", projectIds);
 
   if (error) throw new Error(`getWorkItemStatusCountsServer: ${error.message}`);
   const result = { ...zero };
-  for (const row of (data ?? []) as StatusCountRow[]) {
+  for (const row of (data ?? []) as StatusRow[]) {
     const s = row.status as WorkStatus;
-    if (s in result) result[s] = Number(row.count);
+    if (s in result) result[s]++;
   }
   return result;
 }
@@ -77,17 +79,16 @@ export async function getDefectStatusCountsServer(
   const db = (await createSupabaseServer()) as any;
   const { data, error } = await db
     .from("defects")
-    .select("status, severity, count:id.count()")
+    .select("status, severity")
     .in("project_id", projectIds);
 
   if (error) throw new Error(`getDefectStatusCountsServer: ${error.message}`);
 
   let openDefects = 0;
   let criticalDefects = 0;
-  for (const row of (data ?? []) as (StatusCountRow & { severity: string })[]) {
-    const n = Number(row.count);
-    if (row.status === "open" || row.status === "in_progress") openDefects += n;
-    if (row.severity === "critical" && row.status !== "closed") criticalDefects += n;
+  for (const row of (data ?? []) as StatusSeverityRow[]) {
+    if (row.status === "open" || row.status === "in_progress") openDefects++;
+    if (row.severity === "critical" && row.status !== "closed") criticalDefects++;
   }
   return { openDefects, criticalDefects };
 }
@@ -101,15 +102,15 @@ export async function getDefectSeverityCountsServer(
   const db = (await createSupabaseServer()) as any;
   const { data, error } = await db
     .from("defects")
-    .select("severity, count:id.count()")
+    .select("severity")
     .in("project_id", projectIds);
 
   if (error) throw new Error(`getDefectSeverityCountsServer: ${error.message}`);
 
   const result = { ...zero };
-  for (const row of (data ?? []) as SeverityCountRow[]) {
+  for (const row of (data ?? []) as SeverityRow[]) {
     const s = row.severity as DefectSeverity;
-    if (s in result) result[s] = Number(row.count);
+    if (s in result) result[s]++;
   }
   return result;
 }
@@ -122,7 +123,7 @@ export async function getRiskZoneRowsServer(
   const db = (await createSupabaseServer()) as any;
   const { data, error } = await db
     .from("defects")
-    .select("spatial_node_id, severity, count:id.count()")
+    .select("spatial_node_id, severity")
     .in("project_id", projectIds)
     .not("spatial_node_id", "is", null)
     .in("severity", ["critical", "high"]);
@@ -132,11 +133,10 @@ export async function getRiskZoneRowsServer(
   const zoneMap = new Map<string, RiskZoneRow>();
   for (const row of (data ?? []) as ZoneDefectRow[]) {
     const zoneId = row.spatial_node_id;
-    const n = Number(row.count);
     const existing = zoneMap.get(zoneId) ?? {
       zoneId, defectCount: 0, hasCritical: false, hasHigh: false,
     };
-    existing.defectCount += n;
+    existing.defectCount++;
     if (row.severity === "critical") existing.hasCritical = true;
     if (row.severity === "high") existing.hasHigh = true;
     zoneMap.set(zoneId, existing);
@@ -154,7 +154,7 @@ export async function getTableCountServer(
   const db = (await createSupabaseServer()) as any;
   let query = db
     .from(table)
-    .select("count:id.count()")
+    .select("id")
     .in("project_id", projectIds);
 
   if (extraFilters) {
@@ -164,5 +164,5 @@ export async function getTableCountServer(
   const { data, error } = await query;
   if (error) throw new Error(`getTableCountServer(${table}): ${error.message}`);
 
-  return Number((data as { count: string }[])?.[0]?.count ?? 0);
+  return (data as IdRow[])?.length ?? 0;
 }

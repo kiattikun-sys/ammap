@@ -40,10 +40,12 @@ export interface TableCount {
   count: number;
 }
 
-type StatusCountRow = { status: string; count: string };
-type SeverityCountRow = { severity: string; count: string };
-type ZoneDefectRow = { spatial_node_id: string; severity: string; count: string };
+type StatusRow = { status: string };
+type SeverityRow = { severity: string };
+type StatusSeverityRow = { status: string; severity: string };
+type ZoneDefectRow = { spatial_node_id: string; severity: string };
 type ProgressRow = { progress: number; status: string; due_date: string | null };
+type IdRow = { id: string };
 
 export async function getWorkItemStatusCounts(
   projectIds: string[]
@@ -56,14 +58,14 @@ export async function getWorkItemStatusCounts(
   const db = createSupabaseBrowser();
   const { data, error } = await (db as any)
     .from("work_items")
-    .select("status, count:id.count()")
+    .select("status")
     .in("project_id", projectIds);
 
   if (error) throw new Error(`getWorkItemStatusCounts: ${error.message}`);
   const result = { ...zero };
-  for (const row of (data ?? []) as StatusCountRow[]) {
+  for (const row of (data ?? []) as StatusRow[]) {
     const s = row.status as WorkStatus;
-    if (s in result) result[s] = Number(row.count);
+    if (s in result) result[s]++;
   }
   return result;
 }
@@ -108,17 +110,16 @@ export async function getDefectStatusCounts(
   const db = createSupabaseBrowser();
   const { data, error } = await (db as any)
     .from("defects")
-    .select("status, severity, count:id.count()")
+    .select("status, severity")
     .in("project_id", projectIds);
 
   if (error) throw new Error(`getDefectStatusCounts: ${error.message}`);
 
   let openDefects = 0;
   let criticalDefects = 0;
-  for (const row of (data ?? []) as (StatusCountRow & { severity: string })[]) {
-    const n = Number(row.count);
-    if (row.status === "open" || row.status === "in_progress") openDefects += n;
-    if (row.severity === "critical" && row.status !== "closed") criticalDefects += n;
+  for (const row of (data ?? []) as StatusSeverityRow[]) {
+    if (row.status === "open" || row.status === "in_progress") openDefects++;
+    if (row.severity === "critical" && row.status !== "closed") criticalDefects++;
   }
   return { openDefects, criticalDefects };
 }
@@ -132,15 +133,15 @@ export async function getDefectSeverityCounts(
   const db = createSupabaseBrowser();
   const { data, error } = await (db as any)
     .from("defects")
-    .select("severity, count:id.count()")
+    .select("severity")
     .in("project_id", projectIds);
 
   if (error) throw new Error(`getDefectSeverityCounts: ${error.message}`);
 
   const result = { ...zero };
-  for (const row of (data ?? []) as SeverityCountRow[]) {
+  for (const row of (data ?? []) as SeverityRow[]) {
     const s = row.severity as DefectSeverity;
-    if (s in result) result[s] = Number(row.count);
+    if (s in result) result[s]++;
   }
   return result;
 }
@@ -153,7 +154,7 @@ export async function getRiskZoneRows(
   const db = createSupabaseBrowser();
   const { data, error } = await (db as any)
     .from("defects")
-    .select("spatial_node_id, severity, count:id.count()")
+    .select("spatial_node_id, severity")
     .in("project_id", projectIds)
     .not("spatial_node_id", "is", null)
     .in("severity", ["critical", "high"]);
@@ -163,11 +164,10 @@ export async function getRiskZoneRows(
   const zoneMap = new Map<string, RiskZoneRow>();
   for (const row of (data ?? []) as ZoneDefectRow[]) {
     const zoneId = row.spatial_node_id;
-    const n = Number(row.count);
     const existing = zoneMap.get(zoneId) ?? {
       zoneId, defectCount: 0, hasCritical: false, hasHigh: false,
     };
-    existing.defectCount += n;
+    existing.defectCount++;
     if (row.severity === "critical") existing.hasCritical = true;
     if (row.severity === "high") existing.hasHigh = true;
     zoneMap.set(zoneId, existing);
@@ -185,7 +185,7 @@ export async function getTableCount(
   const db = createSupabaseBrowser();
   let query = (db as any)
     .from(table)
-    .select("count:id.count()")
+    .select("id")
     .in("project_id", projectIds);
 
   if (extraFilters) {
@@ -195,7 +195,7 @@ export async function getTableCount(
   const { data, error } = await query;
   if (error) throw new Error(`getTableCount(${table}): ${error.message}`);
 
-  return Number((data as { count: string }[])?.[0]?.count ?? 0);
+  return (data as IdRow[])?.length ?? 0;
 }
 
 export async function getWorkItemsByZone(
@@ -206,15 +206,15 @@ export async function getWorkItemsByZone(
   const db = createSupabaseBrowser();
   const { data, error } = await (db as any)
     .from("work_items")
-    .select("spatial_node_id, count:id.count()")
+    .select("spatial_node_id")
     .in("project_id", projectIds)
     .not("spatial_node_id", "is", null);
 
   if (error) throw new Error(`getWorkItemsByZone: ${error.message}`);
 
   const result: Record<string, number> = {};
-  for (const row of (data ?? []) as { spatial_node_id: string; count: string }[]) {
-    result[row.spatial_node_id] = Number(row.count);
+  for (const row of (data ?? []) as { spatial_node_id: string }[]) {
+    result[row.spatial_node_id] = (result[row.spatial_node_id] ?? 0) + 1;
   }
   return result;
 }
