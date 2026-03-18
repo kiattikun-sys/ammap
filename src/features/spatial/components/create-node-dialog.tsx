@@ -97,7 +97,7 @@ export function CreateNodeDialog({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h2 className="text-sm font-bold text-slate-900">Add Spatial Node</h2>
+          <h2 className="text-sm font-bold text-slate-900">เพิ่มพื้นที่</h2>
           <button
             type="button"
             onClick={onClose}
@@ -111,7 +111,7 @@ export function CreateNodeDialog({
           {/* Node type selector */}
           <div>
             <label className="mb-2 block text-xs font-semibold text-slate-600 uppercase tracking-wide">
-              Type
+              ประเภทพื้นที่
             </label>
             <div className="flex flex-wrap gap-1.5">
               {NODE_TYPE_ORDER.map((t) => {
@@ -138,7 +138,7 @@ export function CreateNodeDialog({
           {/* Name */}
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-600 uppercase tracking-wide">
-              Name <span className="text-red-500">*</span>
+              ชื่อพื้นที่ <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -155,17 +155,17 @@ export function CreateNodeDialog({
           {validParentTypes.length > 0 && (
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                Parent{" "}
+                สังกัด (อยู่ใน){" "}
                 {selectedType !== "building" && (
                   <span className="text-red-500">*</span>
                 )}
               </label>
               {parentOptions.length === 0 ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                  No{" "}
-                  {validParentTypes.map((t) => NODE_TYPE_LABELS[t]).join(" or ")}{" "}
-                  nodes exist yet.
-                  {selectedType === "building" && " You can save without a parent."}
+                  ยังไม่มี{" "}
+                  {validParentTypes.map((t) => NODE_TYPE_LABELS[t]).join(" หรือ ")}{" "}
+                  ในระบบ
+                  {selectedType === "building" && " (สร้างได้โดยไม่ต้องมี parent)"}
                 </p>
               ) : (
                 <select
@@ -206,14 +206,14 @@ export function CreateNodeDialog({
               disabled={saving || !name.trim() || !hierarchyCheck.valid}
               className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
             >
-              {saving ? "Creating…" : "Create Node"}
+              {saving ? "กำลังสร้าง…" : "สร้างพื้นที่"}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
-              Cancel
+              ยกเลิก
             </button>
           </div>
         </form>

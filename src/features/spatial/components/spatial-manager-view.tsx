@@ -19,10 +19,18 @@ import {
   MapPinOff, CheckCircle2, AlertCircle, Pencil,
 } from "lucide-react";
 import { deleteSpatialNode } from "@/domains/spatial/actions/delete-spatial-node";
+import { getSpatialNodeImpact } from "@/domains/spatial/actions/get-spatial-node-impact";
+import type { SpatialNodeImpact } from "@/domains/spatial/actions/get-spatial-node-impact";
 import type { SpatialTreeNode } from "@/domains/spatial/queries/get-spatial-tree";
 
 interface SpatialManagerViewProps {
   projectId: string;
+}
+
+// ─── Inline flash feedback ───────────────────────────────────────────────────
+interface FlashMessage {
+  text: string;
+  kind: "success" | "error";
 }
 
 // ─── Field-worker friendly labels ────────────────────────────────────────────
@@ -62,14 +70,22 @@ export function SpatialManagerView({ projectId }: SpatialManagerViewProps) {
   }, [projectId]);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+  const [flash, setFlash] = useState<FlashMessage | null>(null);
+
+  function showFlash(text: string, kind: FlashMessage["kind"] = "success") {
+    setFlash({ text, kind });
+    setTimeout(() => setFlash(null), 3000);
+  }
 
   function handleNodeCreated(node: SpatialNode) {
     setNodes((prev) => [...prev, node]);
     setSelectedNodeId(node.id);
+    showFlash(`สร้าง "${node.name}" เรียบร้อยแล้ว`);
   }
 
   function handleNodeUpdated(node: SpatialNode) {
     setNodes((prev) => prev.map((n) => (n.id === node.id ? node : n)));
+    showFlash(`อัปเดต "${node.name}" เรียบร้อยแล้ว`);
   }
 
   return (
@@ -85,6 +101,8 @@ export function SpatialManagerView({ projectId }: SpatialManagerViewProps) {
         onNodesChange={setNodes}
         onNodeCreated={handleNodeCreated}
         onNodeUpdated={handleNodeUpdated}
+        flash={flash}
+        onDeleteSuccess={() => showFlash("ลบพื้นที่เรียบร้อยแล้ว")}
       />
     </MapProvider>
   );
@@ -102,6 +120,8 @@ interface InnerProps {
   onNodesChange: (nodes: SpatialNode[]) => void;
   onNodeCreated: (node: SpatialNode) => void;
   onNodeUpdated: (node: SpatialNode) => void;
+  flash: FlashMessage | null;
+  onDeleteSuccess: () => void;
 }
 
 function SpatialPageInner({
@@ -115,9 +135,12 @@ function SpatialPageInner({
   onNodesChange,
   onNodeCreated,
   onNodeUpdated,
+  flash,
+  onDeleteSuccess,
 }: InnerProps) {
   const { map, isLoaded } = useMap();
   const [drawState, setDrawState] = useState<DrawState | null>(null);
+  const drawStateRef = useRef<DrawState | null>(null);
   const [mode, setMode] = useState<PageMode>({ type: "idle" });
   const hasFitRef = useRef(false);
 
@@ -223,24 +246,40 @@ function SpatialPageInner({
     }
   }, [map, isLoaded, nodes, selectedNodeId]);
 
-  // ── Drawing mode effects: start draw when mode changes to adding/editing location ──
+  // ── Keep drawStateRef current so effects can access latest drawState ──
+  useEffect(() => { drawStateRef.current = drawState; }, [drawState]);
+
+  // ── Drawing mode effects ───────────────────────────────────────────────
+  // Deps include full mode object so switching from node A to node B in
+  // the same mode type (e.g. adding-location) correctly restarts drawing.
   useEffect(() => {
-    if (!drawState) return;
+    const ds = drawStateRef.current;
+    if (!ds) return;
     if (mode.type === "adding-location" || mode.type === "editing-location") {
-      drawState.onStartDrawing(mode.targetNode.type as SpatialNodeType);
+      ds.onStartDrawing(mode.targetNode.type as SpatialNodeType);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode.type]);
+  // mode is the full discriminated union — changing targetNode while staying
+  // in adding-location will produce a new object reference and re-run this effect.
+  }, [mode]);
 
-  // ── Cancel draw if mode resets to idle ────────────────────────────────
+  // ── Cancel draw when mode returns to idle ─────────────────────────────
+  // Use a separate effect so saving (which calls onNodeUpdated then setMode idle)
+  // does NOT cancel the draw mid-save — we only cancel on explicit idle transitions
+  // that are not triggered by a completed save.
+  const prevModeTypeRef = useRef<PageMode["type"]>("idle");
   useEffect(() => {
-    if (mode.type === "idle" && drawState?.activeType) {
-      drawState.onCancelDrawing();
+    const prev = prevModeTypeRef.current;
+    prevModeTypeRef.current = mode.type;
+    // Only cancel if we transitioned away from a drawing mode to idle
+    const wasDrawing = prev === "adding-location" || prev === "editing-location";
+    if (wasDrawing && mode.type === "idle") {
+      drawStateRef.current?.onCancelDrawing();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode.type]);
 
-  // ── Determine the assignToNode for drawing controller ─────────────────
+  // ── assignToNode: snapshot the target node at the time drawing starts ──
+  // We read from mode directly so the controller always gets the exact node
+  // the user clicked, even if selectedNode changes while drawing.
   const assignToNode =
     (mode.type === "adding-location" || mode.type === "editing-location")
       ? mode.targetNode
@@ -344,15 +383,26 @@ function SpatialPageInner({
           projectId={projectId}
           existingNodes={nodes}
           hideToolbar
-          onDrawStateChange={setDrawState}
-          onNodeCreated={(node) => { onNodeCreated(node); setMode({ type: "idle" }); }}
-          onNodeUpdated={(node) => { onNodeUpdated(node); setMode({ type: "idle" }); }}
+          onDrawStateChange={(state) => { setDrawState(state); drawStateRef.current = state; }}
+          onNodeCreated={(node) => { setMode({ type: "idle" }); onNodeCreated(node); }}
+          onNodeUpdated={(node) => { setMode({ type: "idle" }); onNodeUpdated(node); }}
           assignToNode={assignToNode}
         />
       </div>
 
       {/* ── RIGHT: Area Details ────────────────────────────────────────── */}
       <div className="flex w-80 shrink-0 flex-col border-l border-slate-200 bg-white overflow-y-auto">
+        {/* Flash feedback banner */}
+        {flash && (
+          <div className={`mx-3 mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${
+            flash.kind === "success"
+              ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+              : "bg-red-50 border border-red-200 text-red-700"
+          }`}>
+            {flash.kind === "success" ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+            {flash.text}
+          </div>
+        )}
         {selectedNode ? (
           <AreaDetailPanel
             node={selectedNode}
@@ -361,6 +411,7 @@ function SpatialPageInner({
             onSelectNode={onSelectNode}
             onSetMode={setMode}
             onViewOnMap={handleViewOnMap}
+            onDeleteSuccess={onDeleteSuccess}
           />
         ) : (
           <EmptyDetail nodeCount={nodes.length} onAddArea={() => setMode({ type: "creating-area", parentNode: null })} />
@@ -403,6 +454,7 @@ function SpatialPageInner({
             onNodesChange(nodes.filter((n) => !toRemove.has(n.id)));
             onSelectNode(null);
             setMode({ type: "idle" });
+            onDeleteSuccess();
           }}
           onClose={() => setMode({ type: "idle" })}
         />
@@ -419,6 +471,20 @@ interface AreaDetailPanelProps {
   onSelectNode: (id: string | null) => void;
   onSetMode: (mode: PageMode) => void;
   onViewOnMap: (node: SpatialNode) => void;
+  onDeleteSuccess: () => void;
+}
+
+// Build full ancestor path for breadcrumb
+function buildAncestorPath(nodeId: string, allNodes: SpatialNode[]): SpatialNode[] {
+  const path: SpatialNode[] = [];
+  let current = allNodes.find((n) => n.id === nodeId);
+  while (current?.parentId) {
+    const parent = allNodes.find((n) => n.id === current!.parentId);
+    if (!parent) break;
+    path.unshift(parent);
+    current = parent;
+  }
+  return path;
 }
 
 function AreaDetailPanel({ node, allNodes, onSelectNode, onSetMode, onViewOnMap }: AreaDetailPanelProps) {
@@ -427,18 +493,29 @@ function AreaDetailPanel({ node, allNodes, onSelectNode, onSetMode, onViewOnMap 
   const colorClass = NODE_TYPE_COLORS[typeKey] ?? "bg-slate-100 text-slate-600";
   const hasLocation = Boolean(node.geometry);
 
-  const parent = node.parentId ? allNodes.find((n) => n.id === node.parentId) : null;
+  const ancestors = buildAncestorPath(node.id, allNodes);
   const subAreas = allNodes.filter((n) => n.parentId === node.id).sort((a, b) => a.order - b.order);
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b border-slate-100 px-4 py-4">
-        {parent && (
-          <div className="mb-2 flex items-center gap-1 text-[10px] text-slate-400">
-            <span>{AREA_TYPE_LABELS[parent.type as SpatialNodeType]}</span>
-            <ChevronRight size={10} />
-            <span className="font-semibold text-slate-500">{parent.name}</span>
+        {/* Full hierarchy breadcrumb */}
+        {ancestors.length > 0 && (
+          <div className="mb-2 flex flex-wrap items-center gap-0.5 text-[10px] text-slate-400">
+            {ancestors.map((anc, i) => (
+              <span key={anc.id} className="flex items-center gap-0.5">
+                {i > 0 && <ChevronRight size={9} />}
+                <button
+                  type="button"
+                  onClick={() => onSelectNode(anc.id)}
+                  className="font-medium hover:text-blue-500 hover:underline transition-colors"
+                >
+                  {anc.name}
+                </button>
+              </span>
+            ))}
+            <ChevronRight size={9} />
           </div>
         )}
         <div className="flex items-start gap-3">
@@ -469,6 +546,11 @@ function AreaDetailPanel({ node, allNodes, onSelectNode, onSetMode, onViewOnMap 
             </span>
           )}
         </div>
+        {!hasLocation && (
+          <p className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 leading-relaxed">
+            พื้นที่นี้ยังไม่มีตำแหน่งบนแผนที่ กดปุ่ม <strong>กำหนดตำแหน่งบนแผนที่</strong> ด้านล่าง แล้ววาด polygon บนแผนที่
+          </p>
+        )}
         <InfoRow label="พื้นที่ย่อย" value={subAreas.length > 0 ? `${subAreas.length} รายการ` : "ไม่มี"} />
         <InfoRow label="วันที่สร้าง" value={node.createdAt.toLocaleDateString("en-CA")} />
         <InfoRow label="แก้ไขล่าสุด" value={node.updatedAt.toLocaleDateString("en-CA")} />
@@ -576,11 +658,26 @@ function DeleteConfirmModal({
 }) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [impact, setImpact] = useState<SpatialNodeImpact | null>(null);
+  const [loadingImpact, setLoadingImpact] = useState(true);
 
   const subAreas = allNodes.filter((n) => n.parentId === node.id);
   const typeKey = node.type as SpatialNodeType;
   const label = AREA_TYPE_LABELS[typeKey] ?? node.type;
   const colorClass = NODE_TYPE_COLORS[typeKey] ?? "bg-slate-100 text-slate-600";
+
+  // Load linked entity counts when modal opens
+  useEffect(() => {
+    setLoadingImpact(true);
+    getSpatialNodeImpact(node.id)
+      .then(setImpact)
+      .catch(() => setImpact(null))
+      .finally(() => setLoadingImpact(false));
+  }, [node.id]);
+
+  const linkedCount = impact
+    ? impact.workItemCount + impact.defectCount + impact.inspectionCount + impact.evidenceCount
+    : 0;
 
   async function handleDelete() {
     setDeleting(true);
@@ -615,14 +712,50 @@ function DeleteConfirmModal({
             </div>
           </div>
 
+          {/* Sub-area warning — backend blocks delete if children exist */}
           {subAreas.length > 0 && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <div className="flex items-start gap-2 text-xs text-amber-700">
+            <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <div className="flex items-start gap-2 text-xs text-red-700">
                 <AlertCircle size={13} className="mt-0.5 shrink-0" />
                 <span>
-                  พื้นที่นี้มี <strong>{subAreas.length} พื้นที่ย่อย</strong> ที่จะถูกลบพร้อมกันด้วย
+                  <strong>ไม่สามารถลบได้:</strong> พื้นที่นี้มี{" "}
+                  <strong>{subAreas.length} พื้นที่ย่อย</strong> ต้องลบพื้นที่ย่อยทั้งหมดก่อน
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Linked data warning — backend uses ON DELETE SET NULL, data is NOT deleted */}
+          {!loadingImpact && impact && linkedCount > 0 && (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="flex items-start gap-2 text-xs text-amber-700">
+                <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold">ข้อมูลที่เชื่อมโยงกับพื้นที่นี้จะสูญเสียการอ้างอิง:</p>
+                  <ul className="space-y-0.5 pl-1">
+                    {impact.workItemCount > 0 && (
+                      <li>• งาน (Work Items): <strong>{impact.workItemCount} รายการ</strong></li>
+                    )}
+                    {impact.defectCount > 0 && (
+                      <li>• ข้อบกพร่อง (Defects): <strong>{impact.defectCount} รายการ</strong></li>
+                    )}
+                    {impact.inspectionCount > 0 && (
+                      <li>• การตรวจสอบ (Inspections): <strong>{impact.inspectionCount} รายการ</strong></li>
+                    )}
+                    {impact.evidenceCount > 0 && (
+                      <li>• หลักฐาน (Evidence): <strong>{impact.evidenceCount} รายการ</strong></li>
+                    )}
+                  </ul>
+                  <p className="text-amber-600">ข้อมูลเหล่านี้จะยังคงอยู่แต่จะไม่ถูกเชื่อมโยงกับพื้นที่ใดๆ</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loadingImpact && (
+            <div className="mb-3 flex items-center gap-2 text-xs text-slate-400">
+              <div className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-slate-500" />
+              กำลังตรวจสอบข้อมูลที่เชื่อมโยง…
             </div>
           )}
 
@@ -633,11 +766,11 @@ function DeleteConfirmModal({
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={deleting}
+              disabled={deleting || subAreas.length > 0}
               onClick={handleDelete}
-              className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+              className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {deleting ? "กำลังลบ…" : "ยืนยันลบ"}
+              {deleting ? "กำลังลบ…" : subAreas.length > 0 ? "ไม่สามารถลบได้" : "ยืนยันลบ"}
             </button>
             <button
               type="button"
