@@ -23,6 +23,7 @@ export type Permission =
   | "close:defect"
   | "delete:defect"
   | "create:corrective_action"
+  | "update:corrective_action"
   | "complete:corrective_action"
   | "create:inspection"
   | "update:inspection"
@@ -36,7 +37,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
   owner: [
     "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
     "create:defect", "update:defect_status", "close:defect", "delete:defect",
-    "create:corrective_action", "complete:corrective_action",
+    "create:corrective_action", "update:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
     "create:spatial_node", "delete:spatial_node",
@@ -45,7 +46,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
   admin: [
     "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
     "create:defect", "update:defect_status", "close:defect", "delete:defect",
-    "create:corrective_action", "complete:corrective_action",
+    "create:corrective_action", "update:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
     "create:spatial_node", "delete:spatial_node",
@@ -54,7 +55,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
   pm: [
     "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
     "create:defect", "update:defect_status", "delete:defect",
-    "create:corrective_action",
+    "create:corrective_action", "update:corrective_action",
     "create:inspection",
     "create:evidence",
     "create:spatial_node", "delete:spatial_node",
@@ -63,19 +64,19 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
   site_manager: [
     "create:work_item", "update:work_item", "update:work_progress", "delete:work_item",
     "create:defect", "update:defect_status", "delete:defect",
-    "create:corrective_action", "complete:corrective_action",
+    "create:corrective_action", "update:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
     "create:spatial_node", "delete:spatial_node",
   ],
   engineer: [
     "update:work_item", "update:work_progress",
-    "create:corrective_action", "complete:corrective_action",
+    "create:corrective_action", "update:corrective_action", "complete:corrective_action",
     "create:evidence",
   ],
   qa: [
     "create:defect", "update:defect_status", "close:defect",
-    "create:corrective_action", "complete:corrective_action",
+    "create:corrective_action", "update:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
   ],
@@ -95,7 +96,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
   member: [
     "create:work_item", "update:work_item", "update:work_progress",
     "create:defect", "update:defect_status",
-    "create:corrective_action", "complete:corrective_action",
+    "create:corrective_action", "update:corrective_action", "complete:corrective_action",
     "create:inspection", "update:inspection",
     "create:evidence",
   ],
@@ -110,12 +111,14 @@ export async function getCallerRole(): Promise<OrgRole | null> {
   const { data: { user } } = await db.auth.getUser();
   if (!user) return null;
 
-  const { data } = await db
+  const { data, error } = await db
     .from("organization_members")
     .select("role")
     .eq("user_id", user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
+  if (error) return null;
   return (data as { role: OrgRole } | null)?.role ?? null;
 }
 

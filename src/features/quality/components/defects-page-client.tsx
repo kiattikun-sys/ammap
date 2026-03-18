@@ -120,6 +120,7 @@ const STATUS_TABS = [
   { value: "open", label: "Open" },
   { value: "in_progress", label: "In Progress" },
   { value: "pending_reinspection", label: "Reinspection" },
+  { value: "resolved", label: "Resolved" },
   { value: "closed", label: "Closed" },
 ];
 

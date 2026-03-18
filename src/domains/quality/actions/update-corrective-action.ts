@@ -37,7 +37,10 @@ export async function updateCorrectiveAction(
   id: string,
   input: UpdateCorrectiveActionInput
 ): Promise<CorrectiveAction> {
-  const permission = input.status === "completed" ? "complete:corrective_action" : "create:corrective_action";
+  const permission =
+    input.status === "completed"
+      ? "complete:corrective_action"
+      : "update:corrective_action";
   await requirePermission(permission);
   const validated = updateCorrectiveActionSchema.parse(input);
   const db = (await createSupabaseServer()) as any;

@@ -44,6 +44,12 @@ export async function updateDefectStatus(
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     const existing = MOCK_DEFECTS.find((d) => d.id === id);
     if (!existing) throw new Error(`Defect "${id}" not found`);
+    const allowed = ALLOWED_TRANSITIONS[existing.status] ?? [];
+    if (!allowed.includes(status)) {
+      throw new Error(
+        `Invalid defect transition: ${existing.status} → ${status}. Allowed: ${allowed.join(", ") || "none"}`
+      );
+    }
     const updated: Defect = {
       ...existing,
       status,

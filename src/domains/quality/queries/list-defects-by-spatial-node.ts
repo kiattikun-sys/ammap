@@ -24,16 +24,20 @@ function rowToDefect(row: Record<string, unknown>): Defect {
 }
 
 export async function listDefectsBySpatialNode(
-  spatialNodeId: string
+  spatialNodeId: string,
+  projectId: string
 ): Promise<Defect[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    return MOCK_DEFECTS.filter((d) => d.spatialNodeId === spatialNodeId);
+    return MOCK_DEFECTS.filter(
+      (d) => d.spatialNodeId === spatialNodeId && d.projectId === projectId
+    );
   }
   const db = createSupabaseBrowser();
   const { data, error } = await db
     .from("defects")
     .select("*")
-    .eq("spatial_node_id", spatialNodeId);
+    .eq("spatial_node_id", spatialNodeId)
+    .eq("project_id", projectId);
   if (error) throw new Error(`listDefectsBySpatialNode: ${error.message}`);
   return (data ?? []).map((r: Record<string, unknown>) => rowToDefect(r));
 }

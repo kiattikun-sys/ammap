@@ -43,7 +43,7 @@ export function ZoneDefectPanel({ projectId, zoneId, onDefectMutated }: ZoneDefe
 
   function loadDefects() {
     setLoading(true);
-    listDefectsBySpatialNode(zoneId)
+    listDefectsBySpatialNode(zoneId, projectId)
       .then(setDefects)
       .finally(() => setLoading(false));
   }

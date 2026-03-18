@@ -67,15 +67,17 @@ export async function updateInspection(
 
   if (input.status !== undefined) {
     patch.status = input.status;
-    if (input.status === "completed" && !input.completedDate) {
-      patch.completed_date = new Date().toISOString();
+    if (input.status === "completed") {
+      patch.completed_date = input.completedDate
+        ? input.completedDate.toISOString()
+        : new Date().toISOString();
     }
   }
   if (input.result !== undefined) patch.result = input.result;
   if (input.inspectedDate !== undefined) {
     patch.inspected_date = input.inspectedDate ? input.inspectedDate.toISOString() : null;
   }
-  if (input.completedDate !== undefined) {
+  if (input.completedDate !== undefined && input.status !== "completed") {
     patch.completed_date = input.completedDate ? input.completedDate.toISOString() : null;
   }
   if (input.assignedTo !== undefined) patch.assigned_to = input.assignedTo;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Plus, ChevronRight } from "lucide-react";
 import type { Defect, DefectStatus } from "@/domains/quality/model/defect";
 import type { CorrectiveAction } from "@/domains/quality/model/corrective-action";
@@ -71,12 +71,24 @@ export function DefectDetailPanel({ defect, onClose, onUpdated }: DefectDetailPa
   const [showCAForm, setShowCAForm] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [updatingCAId, setUpdatingCAId] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   function loadActions() {
     setLoadingCA(true);
     listCorrectiveActions(defect.id)
-      .then(setActions)
-      .finally(() => setLoadingCA(false));
+      .then((data) => {
+        if (mountedRef.current) setActions(data);
+      })
+      .finally(() => {
+        if (mountedRef.current) setLoadingCA(false);
+      });
   }
 
   useEffect(() => {
@@ -90,7 +102,7 @@ export function DefectDetailPanel({ defect, onClose, onUpdated }: DefectDetailPa
       await updateDefectStatus(defect.id, next);
       onUpdated();
     } finally {
-      setTransitioning(false);
+      if (mountedRef.current) setTransitioning(false);
     }
   }
 
@@ -98,9 +110,9 @@ export function DefectDetailPanel({ defect, onClose, onUpdated }: DefectDetailPa
     setUpdatingCAId(caId);
     try {
       await updateCorrectiveAction(caId, { status });
-      loadActions();
+      if (mountedRef.current) loadActions();
     } finally {
-      setUpdatingCAId(null);
+      if (mountedRef.current) setUpdatingCAId(null);
     }
   }
 

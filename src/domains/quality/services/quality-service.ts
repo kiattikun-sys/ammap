@@ -38,8 +38,8 @@ export class QualityService {
     return deleteDefect(id);
   }
 
-  async listDefectsByZone(spatialNodeId: string): Promise<Defect[]> {
-    return listDefectsBySpatialNode(spatialNodeId);
+  async listDefectsByZone(spatialNodeId: string, projectId: string): Promise<Defect[]> {
+    return listDefectsBySpatialNode(spatialNodeId, projectId);
   }
 
   async listDefects(filter: ListDefectsFilter): Promise<Defect[]> {
