@@ -75,7 +75,7 @@ export function RequestsClient({
   const [resendError, setResendError] = useState<Record<string, string>>({});
 
   function handleFilterChange(value: string) {
-    router.push(`/admin/requests?status=${value}` as any);
+    router.push(`/requests?status=${value}` as any);
   }
 
   function openModal(request: RegistrationRequest, action: ReviewAction) {
