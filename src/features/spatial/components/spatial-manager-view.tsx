@@ -866,7 +866,7 @@ function EmptyDetail({ nodeCount, onAddArea }: { nodeCount: number; onAddArea: (
           </div>
           <p className="text-sm font-semibold text-slate-700">ยังไม่มีพื้นที่</p>
           <p className="mt-1 text-xs text-slate-400 max-w-[200px]">
-            กดปุ่ม "เพิ่มพื้นที่" เพื่อสร้าง Site หรือ Building แรก
+            กดปุ่ม &quot;เพิ่มพื้นที่&quot; เพื่อสร้าง Site หรือ Building แรก
           </p>
           <button
             type="button"
