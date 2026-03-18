@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { createSupabaseAdmin } from "@/lib/supabase/supabase-admin";
 
 export interface SubmitRegistrationRequestInput {
   email: string;
@@ -30,7 +30,7 @@ export async function submitRegistrationRequest(
   // Normalize email at app layer (DB trigger also normalizes, defense-in-depth)
   const normalizedEmail = email.toLowerCase().trim();
 
-  const db = (await createSupabaseServer()) as any;
+  const db = createSupabaseAdmin() as any;
 
   // Block duplicate submissions across all active lifecycle states
   const { data: existing } = await db
