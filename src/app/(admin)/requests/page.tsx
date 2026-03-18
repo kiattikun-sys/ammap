@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
+import { createSupabaseAdmin } from "@/lib/supabase/supabase-admin";
 import { listRegistrationRequests } from "@/domains/platform/actions/list-registration-requests";
 import { RequestsClient } from "./requests-client";
 
 async function isPlatformAdmin(userId: string): Promise<boolean> {
-  const db = (await createSupabaseServer()) as any;
+  // Use admin client to bypass RLS self-reference recursion on platform_admins
+  const db = createSupabaseAdmin() as any;
   const { data } = await db
     .from("platform_admins")
     .select("role")

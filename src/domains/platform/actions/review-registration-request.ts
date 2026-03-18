@@ -10,7 +10,9 @@ async function assertPlatformAdmin(db: any): Promise<string> {
   } = await db.auth.getUser();
   if (error || !user) throw new Error("Unauthorized");
 
-  const { data: admin } = await db
+  // Use admin client to bypass RLS self-reference recursion on platform_admins
+  const adminDb = createSupabaseAdmin() as any;
+  const { data: admin } = await adminDb
     .from("platform_admins")
     .select("role")
     .eq("user_id", user.id)
