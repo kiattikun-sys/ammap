@@ -23,7 +23,7 @@ async function assertPlatformAdmin(db: any): Promise<string> {
 }
 
 async function sendInvite(
-  db: any,
+  _db: any,
   requestId: string,
   email: string,
   fullName: string,
@@ -31,7 +31,7 @@ async function sendInvite(
   reviewerId: string,
   isResend: boolean
 ): Promise<void> {
-  const adminClient = createSupabaseAdmin();
+  const adminClient = createSupabaseAdmin() as any;
   const now = new Date().toISOString();
 
   const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
@@ -40,7 +40,7 @@ async function sendInvite(
   );
 
   // Read current attempt count before modifying
-  const { data: currentRow } = await db
+  const { data: currentRow } = await adminClient
     .from("registration_requests")
     .select("invite_attempts")
     .eq("id", requestId)
@@ -50,7 +50,7 @@ async function sendInvite(
 
   if (inviteError) {
     // Record failure — status stays 'approved' so resend can retry
-    await db
+    await adminClient
       .from("registration_requests")
       .update({
         last_invite_error: inviteError.message,
@@ -60,7 +60,7 @@ async function sendInvite(
       .eq("id", requestId);
 
     // Audit: invite_failed
-    await db.from("registration_request_events").insert({
+    await adminClient.from("registration_request_events").insert({
       request_id: requestId,
       event_type: "invite_failed",
       performed_by: reviewerId,
@@ -71,7 +71,7 @@ async function sendInvite(
   }
 
   // Success — advance to 'invited'
-  await db
+  await adminClient
     .from("registration_requests")
     .update({
       status: "invited",
@@ -83,7 +83,7 @@ async function sendInvite(
     .eq("id", requestId);
 
   // Audit: invited or resend_invite
-  await db.from("registration_request_events").insert({
+  await adminClient.from("registration_request_events").insert({
     request_id: requestId,
     event_type: isResend ? "resend_invite" : "invited",
     performed_by: reviewerId,
