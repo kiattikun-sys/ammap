@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 
 interface DefectsPageClientProps {
   projectId: string;
-  defects: Defect[];
+  defects: Defect[]; 
   profiles: OrgProfile[];
   activeStatus?: string;
   activeSeverity?: string;
