@@ -9,7 +9,7 @@ export default function AdminLayout({
 }) {
   return (
     <AppShell>
-      <Header title="Admin" />
+      <Header title="Platform Admin" />
       <PageContainer>{children}</PageContainer>
     </AppShell>
   );
