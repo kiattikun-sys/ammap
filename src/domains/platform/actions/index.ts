@@ -4,4 +4,4 @@ export type { SubmitRegistrationRequestInput } from "./submit-registration-reque
 export { listRegistrationRequests } from "./list-registration-requests";
 export type { RegistrationRequest } from "./list-registration-requests";
 
-export { approveRegistrationRequest, rejectRegistrationRequest } from "./review-registration-request";
+export { approveRegistrationRequest, rejectRegistrationRequest, resendInvite } from "./review-registration-request";

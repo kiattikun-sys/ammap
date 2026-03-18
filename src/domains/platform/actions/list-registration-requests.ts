@@ -9,10 +9,13 @@ export interface RegistrationRequest {
   companyName: string | null;
   phone: string | null;
   requestedOrgName: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "invited" | "activated" | "rejected";
   reviewedBy: string | null;
   reviewedAt: string | null;
   notes: string | null;
+  invitedAt: string | null;
+  inviteAttempts: number;
+  lastInviteError: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +63,9 @@ export async function listRegistrationRequests(
     reviewedBy: row.reviewed_by,
     reviewedAt: row.reviewed_at,
     notes: row.notes,
+    invitedAt: row.invited_at,
+    inviteAttempts: row.invite_attempts ?? 0,
+    lastInviteError: row.last_invite_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
