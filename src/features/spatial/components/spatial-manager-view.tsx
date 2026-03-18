@@ -255,11 +255,20 @@ function SpatialPageInner({
   useEffect(() => {
     const ds = drawStateRef.current;
     if (!ds) return;
-    if (mode.type === "adding-location" || mode.type === "editing-location") {
+    if (mode.type === "adding-location") {
+      // Fresh draw — no existing geometry to load
       ds.onStartDrawing(mode.targetNode.type as SpatialNodeType);
+    } else if (mode.type === "editing-location") {
+      if (mode.targetNode.geometry) {
+        // True edit — load existing geometry into draw for vertex editing
+        ds.onStartEditing(mode.targetNode.type as SpatialNodeType, mode.targetNode.geometry);
+      } else {
+        // Node has no geometry yet (shouldn't reach here via UI, but safe fallback)
+        ds.onStartDrawing(mode.targetNode.type as SpatialNodeType);
+      }
     }
   // mode is the full discriminated union — changing targetNode while staying
-  // in adding-location will produce a new object reference and re-run this effect.
+  // in the same mode type produces a new object reference and re-runs this effect.
   }, [mode]);
 
   // ── Cancel draw when mode returns to idle ─────────────────────────────
@@ -660,6 +669,8 @@ function DeleteConfirmModal({
   const [error, setError] = useState<string | null>(null);
   const [impact, setImpact] = useState<SpatialNodeImpact | null>(null);
   const [loadingImpact, setLoadingImpact] = useState(true);
+  // Explicitly track whether the impact query failed — null impact alone is ambiguous
+  const [impactError, setImpactError] = useState(false);
 
   const subAreas = allNodes.filter((n) => n.parentId === node.id);
   const typeKey = node.type as SpatialNodeType;
@@ -669,14 +680,16 @@ function DeleteConfirmModal({
   // Load linked entity counts when modal opens
   useEffect(() => {
     setLoadingImpact(true);
+    setImpactError(false);
     getSpatialNodeImpact(node.id)
-      .then(setImpact)
-      .catch(() => setImpact(null))
+      .then((data) => { setImpact(data); setImpactError(false); })
+      .catch(() => { setImpact(null); setImpactError(true); })
       .finally(() => setLoadingImpact(false));
   }, [node.id]);
 
   const linkedCount = impact
-    ? impact.workItemCount + impact.defectCount + impact.inspectionCount + impact.evidenceCount
+    ? impact.workItemCount + impact.defectCount + impact.inspectionCount +
+      impact.evidenceCount + impact.timelineEventCount + impact.progressRecordCount
     : 0;
 
   async function handleDelete() {
@@ -725,37 +738,60 @@ function DeleteConfirmModal({
             </div>
           )}
 
-          {/* Linked data warning — backend uses ON DELETE SET NULL, data is NOT deleted */}
-          {!loadingImpact && impact && linkedCount > 0 && (
+          {/* Loading state */}
+          {loadingImpact && (
+            <div className="mb-3 flex items-center gap-2 text-xs text-slate-400">
+              <div className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-slate-500" />
+              กำลังตรวจสอบข้อมูลที่เชื่อมโยง…
+            </div>
+          )}
+
+          {/* Unknown / error state — never show "safe" when we cannot confirm */}
+          {!loadingImpact && impactError && (
             <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <div className="flex items-start gap-2 text-xs text-amber-700">
                 <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                <div className="space-y-1">
-                  <p className="font-semibold">ข้อมูลที่เชื่อมโยงกับพื้นที่นี้จะสูญเสียการอ้างอิง:</p>
-                  <ul className="space-y-0.5 pl-1">
-                    {impact.workItemCount > 0 && (
-                      <li>• งาน (Work Items): <strong>{impact.workItemCount} รายการ</strong></li>
-                    )}
-                    {impact.defectCount > 0 && (
-                      <li>• ข้อบกพร่อง (Defects): <strong>{impact.defectCount} รายการ</strong></li>
-                    )}
-                    {impact.inspectionCount > 0 && (
-                      <li>• การตรวจสอบ (Inspections): <strong>{impact.inspectionCount} รายการ</strong></li>
-                    )}
-                    {impact.evidenceCount > 0 && (
-                      <li>• หลักฐาน (Evidence): <strong>{impact.evidenceCount} รายการ</strong></li>
-                    )}
-                  </ul>
-                  <p className="text-amber-600">ข้อมูลเหล่านี้จะยังคงอยู่แต่จะไม่ถูกเชื่อมโยงกับพื้นที่ใดๆ</p>
+                <div>
+                  <p className="font-semibold">ไม่สามารถตรวจสอบผลกระทบได้ครบถ้วน</p>
+                  <p className="mt-0.5 text-amber-600">
+                    ระบบไม่สามารถอ่านข้อมูลที่เชื่อมโยงได้ อาจมีข้อมูลงาน ข้อบกพร่อง
+                    หรือหลักฐานที่จะสูญเสียการเชื่อมโยงกับพื้นที่นี้
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {loadingImpact && (
-            <div className="mb-3 flex items-center gap-2 text-xs text-slate-400">
-              <div className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-slate-500" />
-              กำลังตรวจสอบข้อมูลที่เชื่อมโยง…
+          {/* Linked data warning — backend uses ON DELETE SET NULL, data is NOT deleted */}
+          {!loadingImpact && !impactError && impact && linkedCount > 0 && (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="flex items-start gap-2 text-xs text-amber-700">
+                <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold">ข้อมูลต่อไปนี้จะยังคงอยู่ แต่จะไม่ถูกเชื่อมโยงกับพื้นที่นี้อีก:</p>
+                  <ul className="space-y-0.5 pl-1">
+                    {impact.workItemCount > 0 && (
+                      <li>• งาน: <strong>{impact.workItemCount} รายการ</strong></li>
+                    )}
+                    {impact.defectCount > 0 && (
+                      <li>• ข้อบกพร่อง: <strong>{impact.defectCount} รายการ</strong></li>
+                    )}
+                    {impact.inspectionCount > 0 && (
+                      <li>• การตรวจสอบ: <strong>{impact.inspectionCount} รายการ</strong></li>
+                    )}
+                    {impact.evidenceCount > 0 && (
+                      <li>• หลักฐาน: <strong>{impact.evidenceCount} รายการ</strong></li>
+                    )}
+                    {impact.timelineEventCount > 0 && (
+                      <li>• เหตุการณ์ไทม์ไลน์: <strong>{impact.timelineEventCount} รายการ</strong></li>
+                    )}
+                    {impact.progressRecordCount > 0 && (
+                      <li>• บันทึกความคืบหน้า: <strong>{impact.progressRecordCount} รายการ</strong></li>
+                    )}
+                  </ul>
+                  <p className="text-amber-600">ข้อมูลจะยังคงอยู่ในระบบ แต่จะไม่ถูกเชื่อมโยงกับพื้นที่ใดๆ</p>
+                </div>
+              </div>
             </div>
           )}
 

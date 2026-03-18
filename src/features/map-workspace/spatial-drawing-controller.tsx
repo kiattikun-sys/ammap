@@ -13,6 +13,8 @@ import { AssignLocationModal } from "@/features/spatial/components/assign-locati
 export interface DrawState {
   activeType: SpatialNodeType | null;
   onStartDrawing: (type: SpatialNodeType) => void;
+  /** Load an existing geometry into draw for vertex editing (edit-location mode) */
+  onStartEditing: (type: SpatialNodeType, existingGeometry: GeoJSON.Geometry) => void;
   onCancelDrawing: () => void;
 }
 
@@ -30,6 +32,8 @@ interface SpatialDrawingControllerProps {
 interface PendingDraw {
   geometry: GeoJSON.Geometry;
   drawFeatureId: string;
+  /** true when loaded from existing geometry (edit mode) vs freshly drawn (draw mode) */
+  isEdit: boolean;
 }
 
 export function SpatialDrawingController({
@@ -65,13 +69,26 @@ export function SpatialDrawingController({
       setPending({
         geometry: feature.geometry,
         drawFeatureId: feature.id as string,
+        isEdit: false,
+      });
+    }
+
+    // draw.update fires when user moves/adjusts vertices of an existing loaded feature
+    function onDrawUpdate(e: { features: GeoJSON.Feature[]; action: string }) {
+      const feature = e.features[0];
+      if (!feature || !feature.geometry) return;
+      setPending((prev) => {
+        if (!prev) return prev;
+        return { ...prev, geometry: feature.geometry! };
       });
     }
 
     (m as any).on("draw.create", onDrawCreate);
+    (m as any).on("draw.update", onDrawUpdate);
 
     return () => {
       (m as any).off("draw.create", onDrawCreate);
+      (m as any).off("draw.update", onDrawUpdate);
       if (drawRef.current) {
         try {
           m.removeControl(drawRef.current);
@@ -88,8 +105,49 @@ export function SpatialDrawingController({
 
   const handleStartDrawing = useCallback((type: SpatialNodeType) => {
     if (!drawRef.current) return;
+    drawRef.current.deleteAll();
     setActiveType(type);
     drawRef.current.changeMode("draw_polygon");
+  }, []);
+
+  // Load existing geometry into draw for vertex editing (edit-location mode)
+  const handleStartEditing = useCallback((type: SpatialNodeType, existingGeometry: GeoJSON.Geometry) => {
+    const draw = drawRef.current;
+    if (!draw) return;
+
+    draw.deleteAll();
+    setActiveType(type);
+
+    // Normalize MultiPolygon to first Polygon for editing simplicity
+    let geomToLoad: GeoJSON.Polygon;
+    if (existingGeometry.type === "Polygon") {
+      geomToLoad = existingGeometry as GeoJSON.Polygon;
+    } else if (existingGeometry.type === "MultiPolygon") {
+      geomToLoad = {
+        type: "Polygon",
+        coordinates: (existingGeometry as GeoJSON.MultiPolygon).coordinates[0],
+      };
+    } else {
+      // Unsupported geometry type — fall back to fresh draw
+      draw.changeMode("draw_polygon");
+      return;
+    }
+
+    const feature: GeoJSON.Feature<GeoJSON.Polygon> = {
+      type: "Feature",
+      id: "edit-target",
+      geometry: geomToLoad,
+      properties: {},
+    };
+
+    const ids = draw.add(feature as any);
+    const featureId = ids[0] as string;
+
+    // Enter direct_select so user can drag individual vertices immediately
+    draw.changeMode("direct_select", { featureId });
+
+    // Register the loaded feature as pending so save is available immediately
+    setPending({ geometry: geomToLoad, drawFeatureId: featureId, isEdit: true });
   }, []);
 
   const handleCancelDrawing = useCallback(() => {
@@ -105,9 +163,10 @@ export function SpatialDrawingController({
     onDrawStateChangeRef.current?.({
       activeType,
       onStartDrawing: handleStartDrawing,
+      onStartEditing: handleStartEditing,
       onCancelDrawing: handleCancelDrawing,
     });
-  }, [activeType, isLoaded, handleStartDrawing, handleCancelDrawing]);
+  }, [activeType, isLoaded, handleStartDrawing, handleStartEditing, handleCancelDrawing]);
 
   function clearPending() {
     if (drawRef.current && pending) {
