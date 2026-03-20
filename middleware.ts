@@ -1,15 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/supabase-middleware";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/projects"];
+const PROTECTED_PREFIXES = ["/dashboard", "/projects", "/admin"];
 const AUTH_PAGES = ["/login", "/signup", "/register"];
-const SKIP_REDIRECT_PAGES = ["/set-password", "/auth/callback"];
+const SKIP_REDIRECT_PAGES = ["/set-password", "/auth/callback", "/suspended"];
 
 // Matches /{uuid}/{anything} — project-scoped routes
 const PROJECT_ROUTE_RE = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
 
 export async function middleware(request: NextRequest) {
-  const { response, user } = await updateSession(request);
+  const { response, user, isSuspended } = await updateSession(request);
   const pathname = request.nextUrl.pathname;
 
   const isProtected =
@@ -20,6 +20,12 @@ export async function middleware(request: NextRequest) {
   const isSkipped = SKIP_REDIRECT_PAGES.some((p) => pathname.startsWith(p));
 
   if (isSkipped) return response;
+
+  // Suspended users are blocked from all protected routes.
+  // Redirect to /suspended which explains the situation.
+  if (user && isSuspended && (isProtected || isAuthPage)) {
+    return NextResponse.redirect(new URL("/suspended", request.url));
+  }
 
   if (isProtected && !user) {
     const loginUrl = new URL("/login", request.url);
