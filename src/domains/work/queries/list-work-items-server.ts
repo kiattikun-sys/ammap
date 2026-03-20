@@ -15,7 +15,6 @@ function rowToWorkItem(row: Record<string, unknown>): WorkItem {
     priority: row.priority as WorkPriority,
     assignedTo: (row.assigned_to as string | null) ?? null,
     dueDate: row.due_date ? new Date(row.due_date as string) : null,
-    progress: prog,
     progressPercent: prog,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     createdAt: new Date(row.created_at as string),

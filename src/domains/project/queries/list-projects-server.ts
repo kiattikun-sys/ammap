@@ -1,5 +1,5 @@
 import { createSupabaseServer } from "@/lib/supabase/supabase-server";
-import type { Project } from "../model";
+import type { Project, ProjectStatus } from "../model";
 
 function rowToProject(row: Record<string, unknown>): Project {
   const archivedAt = row.archived_at ? new Date(row.archived_at as string) : null;
@@ -8,7 +8,9 @@ function rowToProject(row: Record<string, unknown>): Project {
     name: row.name as string,
     description: (row.description as string) ?? undefined,
     organizationId: (row.organization_id as string) ?? "",
-    status: archivedAt ? "archived" : "active",
+    status: (row.status as ProjectStatus) ?? (archivedAt ? "archived" : "active"),
+    startDate: row.start_date ? new Date(row.start_date as string) : undefined,
+    endDate: row.end_date ? new Date(row.end_date as string) : undefined,
     archivedAt,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
