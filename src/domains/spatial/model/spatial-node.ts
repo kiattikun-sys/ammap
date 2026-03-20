@@ -13,8 +13,6 @@ export interface SpatialNode {
   name: string;
   type: SpatialNodeType;
   geometry: GeoJSON.Geometry | null;
-  geometryId: string | null;
-  level: number;
   order: number;
   metadata: Record<string, unknown>;
   createdAt: Date;

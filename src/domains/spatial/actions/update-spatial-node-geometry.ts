@@ -29,8 +29,6 @@ export async function updateSpatialNodeGeometry(
     type: row.type as SpatialNodeType,
     name: row.name as string,
     geometry: (row.geometry as GeoJSON.Geometry | null) ?? null,
-    geometryId: null,
-    level: 0,
     order: (row.order as number) ?? 0,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     createdAt: new Date(row.created_at as string),

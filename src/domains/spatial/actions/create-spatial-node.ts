@@ -39,8 +39,6 @@ export async function createSpatialNode(
     type: validated.type,
     name: row.name as string,
     geometry: (row.geometry as GeoJSON.Geometry | null) ?? null,
-    geometryId: null,
-    level: 0,
     order: (row.order as number) ?? 0,
     metadata: {},
     createdAt: new Date(row.created_at as string),
