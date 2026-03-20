@@ -1,26 +1,7 @@
 "use server";
 
-import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import { createSupabaseAdmin } from "@/lib/supabase/supabase-admin";
-
-async function assertPlatformAdmin(db: any): Promise<string> {
-  const {
-    data: { user },
-    error,
-  } = await db.auth.getUser();
-  if (error || !user) throw new Error("Unauthorized");
-
-  // Use admin client to bypass RLS self-reference recursion on platform_admins
-  const adminDb = createSupabaseAdmin() as any;
-  const { data: admin } = await adminDb
-    .from("platform_admins")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!admin) throw new Error("Forbidden: platform admin access required");
-  return user.id;
-}
+import { assertPlatformAdmin } from "@/lib/platform/assert-platform-admin";
 
 async function sendInvite(
   _db: any,
@@ -97,8 +78,8 @@ export async function approveRegistrationRequest(
   requestId: string,
   notes?: string
 ): Promise<void> {
-  const db = (await createSupabaseServer()) as any;
-  const reviewerId = await assertPlatformAdmin(db);
+  const { userId: reviewerId } = await assertPlatformAdmin();
+  const db = createSupabaseAdmin() as any;
 
   // Fetch request — must be in 'pending' state
   const { data: request, error: fetchError } = await db
@@ -109,7 +90,7 @@ export async function approveRegistrationRequest(
     .maybeSingle();
 
   if (fetchError) throw new Error(fetchError.message);
-  if (!request) throw new Error("คำขอไม่พบ หรืออยู่ในสถานะที่ไม่สามารถอนุมัติได้");
+  if (!request) throw new Error("Request not found or cannot be approved in its current state.");
 
   const now = new Date().toISOString();
 
@@ -154,8 +135,8 @@ export async function rejectRegistrationRequest(
   requestId: string,
   notes?: string
 ): Promise<void> {
-  const db = (await createSupabaseServer()) as any;
-  const reviewerId = await assertPlatformAdmin(db);
+  const { userId: reviewerId } = await assertPlatformAdmin();
+  const db = createSupabaseAdmin() as any;
 
   const now = new Date().toISOString();
 
@@ -187,8 +168,8 @@ export async function rejectRegistrationRequest(
 export async function resendInvite(
   requestId: string
 ): Promise<void> {
-  const db = (await createSupabaseServer()) as any;
-  const reviewerId = await assertPlatformAdmin(db);
+  const { userId: reviewerId } = await assertPlatformAdmin();
+  const db = createSupabaseAdmin() as any;
 
   // Only resendable if status is 'invited' or 'approved' (invite may have failed previously)
   const { data: request, error: fetchError } = await db
@@ -199,7 +180,7 @@ export async function resendInvite(
     .maybeSingle();
 
   if (fetchError) throw new Error(fetchError.message);
-  if (!request) throw new Error("คำขอไม่พบ หรืออยู่ในสถานะที่ไม่สามารถส่งคำเชิญซ้ำได้");
+  if (!request) throw new Error("Request not found or cannot be resent in its current state.");
 
   await sendInvite(
     db,

@@ -1,7 +1,7 @@
 "use server";
 
-import { createSupabaseServer } from "@/lib/supabase/supabase-server";
 import { createSupabaseAdmin } from "@/lib/supabase/supabase-admin";
+import { assertPlatformAdmin } from "@/lib/platform/assert-platform-admin";
 
 export interface RegistrationRequest {
   id: string;
@@ -21,27 +21,10 @@ export interface RegistrationRequest {
   updatedAt: string;
 }
 
-async function assertPlatformAdmin(db: any): Promise<string> {
-  const { data: { user }, error } = await db.auth.getUser();
-  if (error || !user) throw new Error("Unauthorized");
-
-  // Use admin client to bypass RLS self-reference recursion on platform_admins
-  const adminDb = createSupabaseAdmin() as any;
-  const { data: admin } = await adminDb
-    .from("platform_admins")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!admin) throw new Error("Forbidden: platform admin access required");
-  return user.id;
-}
-
 export async function listRegistrationRequests(
   statusFilter?: "pending" | "approved" | "invited" | "activated" | "rejected" | "all"
 ): Promise<RegistrationRequest[]> {
-  const db = (await createSupabaseServer()) as any;
-  await assertPlatformAdmin(db);
+  await assertPlatformAdmin();
 
   // Use admin client to bypass RLS on registration_requests (platform_admins only policy)
   const adminDb = createSupabaseAdmin() as any;

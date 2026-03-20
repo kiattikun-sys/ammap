@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Search, ClipboardList } from "lucide-react";
 import type { RegistrationRequest } from "@/domains/platform/actions/list-registration-requests";
 import {
   approveRegistrationRequest,
@@ -9,14 +10,14 @@ import {
   resendInvite,
 } from "@/domains/platform/actions/review-registration-request";
 
-// ── Status display config ────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
-  pending:   "รอพิจารณา",
-  approved:  "อนุมัติ (รอส่งคำเชิญ)",
-  invited:   "ส่งคำเชิญแล้ว",
-  activated: "เปิดใช้งานแล้ว",
-  rejected:  "ปฏิเสธแล้ว",
+  pending:   "Pending",
+  approved:  "Approved",
+  invited:   "Invited",
+  activated: "Activated",
+  rejected:  "Rejected",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,11 +29,12 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const FILTER_TABS = [
-  { value: "pending",   label: "รอพิจารณา" },
-  { value: "invited",   label: "รอยืนยัน" },
-  { value: "activated", label: "เปิดใช้แล้ว" },
-  { value: "rejected",  label: "ปฏิเสธ" },
-  { value: "all",       label: "ทั้งหมด" },
+  { value: "pending",   label: "Pending" },
+  { value: "approved",  label: "Approved" },
+  { value: "invited",   label: "Invited" },
+  { value: "activated", label: "Activated" },
+  { value: "rejected",  label: "Rejected" },
+  { value: "all",       label: "All" },
 ] as const;
 
 // ── Types ────────────────────────────────────────────────────────
@@ -48,8 +50,8 @@ interface ReviewModalState {
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("th-TH", {
-    day: "numeric",
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit",
     month: "short",
     year: "numeric",
     hour: "2-digit",
@@ -67,15 +69,30 @@ export function RequestsClient({
   currentFilter: string;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isConfirmPending, startConfirmTransition] = useTransition();
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [modal, setModal] = useState<ReviewModalState | null>(null);
   const [notes, setNotes] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
-  const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendError, setResendError] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+
+  // Client-side search: email, name, org
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return requests;
+    return requests.filter(
+      (r) =>
+        r.email.toLowerCase().includes(q) ||
+        r.fullName.toLowerCase().includes(q) ||
+        r.requestedOrgName.toLowerCase().includes(q) ||
+        (r.companyName ?? "").toLowerCase().includes(q)
+    );
+  }, [requests, search]);
 
   function handleFilterChange(value: string) {
-    router.push(`/requests?status=${value}` as any);
+    setSearch("");
+    router.push(`/admin/requests?status=${value}` as any);
   }
 
   function openModal(request: RegistrationRequest, action: ReviewAction) {
@@ -93,7 +110,7 @@ export function RequestsClient({
   function handleConfirm() {
     if (!modal) return;
     setActionError(null);
-    startTransition(async () => {
+    startConfirmTransition(async () => {
       try {
         if (modal.action === "approve") {
           await approveRegistrationRequest(modal.request.id, notes);
@@ -103,126 +120,163 @@ export function RequestsClient({
         closeModal();
         router.refresh();
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+        setActionError(err instanceof Error ? err.message : "An error occurred");
       }
     });
   }
 
-  function handleResend(requestId: string) {
+  async function handleResend(requestId: string) {
     setResendingId(requestId);
     setResendError((prev) => ({ ...prev, [requestId]: "" }));
-    startTransition(async () => {
-      try {
-        await resendInvite(requestId);
-        router.refresh();
-      } catch (err) {
-        setResendError((prev) => ({
-          ...prev,
-          [requestId]: err instanceof Error ? err.message : "เกิดข้อผิดพลาด",
-        }));
-      } finally {
-        setResendingId(null);
-      }
-    });
+    try {
+      await resendInvite(requestId);
+      router.refresh();
+    } catch (err) {
+      setResendError((prev) => ({
+        ...prev,
+        [requestId]: err instanceof Error ? err.message : "An error occurred",
+      }));
+    } finally {
+      setResendingId(null);
+    }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">คำขอใช้งานระบบ</h1>
+    <div className="flex-1 overflow-y-auto p-8">
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Registration Requests</h1>
         <p className="mt-1 text-sm text-slate-500">
-          ตรวจสอบและพิจารณาคำขอจากผู้ใช้ใหม่ — {requests.length} รายการ
+          Review and process onboarding requests from new users.
         </p>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-fit">
-        {FILTER_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => handleFilterChange(tab.value)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              currentFilter === tab.value
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Toolbar: filters + search */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        {/* Filter tabs */}
+        <div className="flex gap-1 rounded-xl bg-slate-100 p-1 flex-wrap">
+          {FILTER_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => handleFilterChange(tab.value)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                currentFilter === tab.value
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email, or org…"
+            className="h-9 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 w-64"
+          />
+        </div>
       </div>
 
-      {/* Empty state */}
-      {requests.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-          <p className="text-sm text-slate-400">ไม่มีคำขอในหมวดนี้</p>
+      {/* Result count */}
+      <p className="mb-3 text-xs text-slate-400">
+        {filtered.length} of {requests.length} request{requests.length !== 1 ? "s" : ""}
+        {search ? ` matching "${search}"` : ""}
+      </p>
+
+      {/* Table or empty state */}
+      {filtered.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-slate-400">
+          <ClipboardList size={28} className="mb-2 text-slate-300" />
+          <p className="text-sm font-medium">
+            {search ? "No requests match your search" : "No requests in this category"}
+          </p>
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">ชื่อ / อีเมล</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">องค์กร</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">สถานะ / คำเชิญ</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">วันที่ยื่น</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">การดำเนินการ</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Name / Email</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Organization</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Timeline</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {requests.map((req) => (
+              {filtered.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50 transition-colors align-top">
+
                   {/* Name / email / phone */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 min-w-[200px]">
                     <p className="font-medium text-slate-900">{req.fullName}</p>
-                    <p className="text-xs text-slate-400">{req.email}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{req.email}</p>
                     {req.phone && (
-                      <p className="text-xs text-slate-400">{req.phone}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{req.phone}</p>
                     )}
                   </td>
 
                   {/* Org */}
-                  <td className="px-4 py-3">
-                    <p className="text-slate-700">{req.requestedOrgName}</p>
+                  <td className="px-4 py-3 min-w-[160px]">
+                    <p className="text-slate-800 font-medium">{req.requestedOrgName}</p>
                     {req.companyName && (
-                      <p className="text-xs text-slate-400">{req.companyName}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{req.companyName}</p>
                     )}
                   </td>
 
-                  {/* Status + invite info */}
-                  <td className="px-4 py-3 space-y-1.5">
+                  {/* Status + invite details */}
+                  <td className="px-4 py-3 min-w-[180px]">
                     <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[req.status] ?? ""}`}>
                       {STATUS_LABELS[req.status] ?? req.status}
                     </span>
 
                     {req.inviteAttempts > 0 && (
-                      <p className="text-xs text-slate-400">
-                        ส่งคำเชิญแล้ว {req.inviteAttempts} ครั้ง
-                        {req.invitedAt ? ` · ล่าสุด ${formatDate(req.invitedAt)}` : ""}
+                      <p className="mt-1.5 text-xs text-slate-400">
+                        {req.inviteAttempts} invite attempt{req.inviteAttempts !== 1 ? "s" : ""}
+                        {req.invitedAt && <span> · last {formatDate(req.invitedAt)}</span>}
                       </p>
                     )}
 
                     {req.lastInviteError && (
-                      <p className="text-xs text-red-500 max-w-[200px] truncate" title={req.lastInviteError}>
+                      <p
+                        className="mt-1 text-xs text-red-500 max-w-[220px] truncate"
+                        title={req.lastInviteError}
+                      >
                         ⚠ {req.lastInviteError}
                       </p>
                     )}
 
                     {req.notes && (
-                      <p className="text-xs text-slate-400 max-w-[200px] truncate" title={req.notes}>
-                        หมายเหตุ: {req.notes}
+                      <p
+                        className="mt-1 text-xs text-slate-400 max-w-[220px] truncate"
+                        title={req.notes}
+                      >
+                        Note: {req.notes}
                       </p>
                     )}
 
                     {resendError[req.id] && (
-                      <p className="text-xs text-red-500">{resendError[req.id]}</p>
+                      <p className="mt-1 text-xs text-red-500">{resendError[req.id]}</p>
                     )}
                   </td>
 
-                  {/* Date */}
-                  <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
-                    {formatDate(req.createdAt)}
+                  {/* Timeline dates */}
+                  <td className="px-4 py-3 min-w-[160px]">
+                    <div className="space-y-1 text-xs text-slate-400">
+                      <p><span className="text-slate-500 font-medium">Submitted:</span> {formatDate(req.createdAt)}</p>
+                      {req.reviewedAt && (
+                        <p><span className="text-slate-500 font-medium">Reviewed:</span> {formatDate(req.reviewedAt)}</p>
+                      )}
+                      {req.invitedAt && (
+                        <p><span className="text-slate-500 font-medium">Invited:</span> {formatDate(req.invitedAt)}</p>
+                      )}
+                    </div>
                   </td>
 
                   {/* Actions */}
@@ -231,17 +285,17 @@ export function RequestsClient({
                       <div className="flex gap-2">
                         <button
                           onClick={() => openModal(req, "approve")}
-                          disabled={isPending}
+                          disabled={isConfirmPending}
                           className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
                         >
-                          อนุมัติ
+                          Approve
                         </button>
                         <button
                           onClick={() => openModal(req, "reject")}
-                          disabled={isPending}
+                          disabled={isConfirmPending}
                           className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
                         >
-                          ปฏิเสธ
+                          Reject
                         </button>
                       </div>
                     )}
@@ -249,10 +303,10 @@ export function RequestsClient({
                     {(req.status === "invited" || req.status === "approved") && (
                       <button
                         onClick={() => handleResend(req.id)}
-                        disabled={isPending && resendingId === req.id}
+                        disabled={resendingId === req.id}
                         className="rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 transition-colors"
                       >
-                        {isPending && resendingId === req.id ? "กำลังส่ง…" : "ส่งคำเชิญอีกครั้ง"}
+                        {resendingId === req.id ? "Sending…" : "Resend Invite"}
                       </button>
                     )}
 
@@ -295,28 +349,34 @@ export function RequestsClient({
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900">
-                    {modal.action === "approve" ? "ยืนยันการอนุมัติ" : "ยืนยันการปฏิเสธ"}
+                    {modal.action === "approve" ? "Confirm Approval" : "Confirm Rejection"}
                   </h2>
                   <p className="text-xs text-slate-400">
                     {modal.action === "approve"
-                      ? "ระบบจะส่งคำเชิญไปยังอีเมลของผู้ใช้"
-                      : "การดำเนินการนี้ไม่สามารถยกเลิกได้"}
+                      ? "An invite email will be sent to the user."
+                      : "This action cannot be undone."}
                   </p>
                 </div>
               </div>
 
-              {/* Request info */}
+              {/* Request summary */}
               <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">คำขอ</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Request</p>
                 <p className="text-sm font-semibold text-slate-900">{modal.request.fullName}</p>
                 <p className="text-xs text-slate-500">{modal.request.email}</p>
-                <p className="text-xs text-slate-500">องค์กร: {modal.request.requestedOrgName}</p>
+                <p className="text-xs text-slate-500">Org: {modal.request.requestedOrgName}</p>
+                {modal.request.companyName && (
+                  <p className="text-xs text-slate-500">Company: {modal.request.companyName}</p>
+                )}
+                {modal.request.phone && (
+                  <p className="text-xs text-slate-500">Phone: {modal.request.phone}</p>
+                )}
               </div>
 
               {/* Notes */}
               <div className="mb-4">
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  หมายเหตุ <span className="font-normal text-slate-400">(ถ้ามี)</span>
+                  Notes <span className="font-normal text-slate-400">(optional)</span>
                 </label>
                 <textarea
                   rows={3}
@@ -325,8 +385,8 @@ export function RequestsClient({
                   className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   placeholder={
                     modal.action === "approve"
-                      ? "เช่น ข้อมูลเพิ่มเติมสำหรับผู้ใช้"
-                      : "เช่น เหตุผลที่ปฏิเสธ"
+                      ? "e.g. Additional info for the user"
+                      : "e.g. Reason for rejection"
                   }
                 />
               </div>
@@ -341,7 +401,7 @@ export function RequestsClient({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  disabled={isPending}
+                  disabled={isConfirmPending}
                   onClick={handleConfirm}
                   className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 ${
                     modal.action === "approve"
@@ -349,18 +409,19 @@ export function RequestsClient({
                       : "bg-red-500 hover:bg-red-600"
                   }`}
                 >
-                  {isPending
-                    ? "กำลังดำเนินการ…"
+                  {isConfirmPending
+                    ? "Processing…"
                     : modal.action === "approve"
-                    ? "ยืนยันอนุมัติ + ส่งคำเชิญ"
-                    : "ยืนยันปฏิเสธ"}
+                    ? "Confirm Approval + Send Invite"
+                    : "Confirm Rejection"}
                 </button>
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  disabled={isConfirmPending}
+                  className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  ยกเลิก
+                  Cancel
                 </button>
               </div>
             </div>
