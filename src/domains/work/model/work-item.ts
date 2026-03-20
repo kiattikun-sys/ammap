@@ -16,7 +16,6 @@ export interface WorkItem {
   priority: WorkPriority;
   assignedTo: string | null;
   dueDate: Date | null;
-  progress: number;
   progressPercent: number;
   metadata: Record<string, unknown>;
   createdAt: Date;

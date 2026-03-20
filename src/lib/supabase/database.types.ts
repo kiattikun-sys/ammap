@@ -522,30 +522,39 @@ export type Database = {
           archived_at: string | null
           created_at: string
           description: string | null
+          end_date: string | null
           id: string
           metadata: Json
           name: string
           organization_id: string
+          start_date: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
           description?: string | null
+          end_date?: string | null
           id?: string
           metadata?: Json
           name: string
           organization_id: string
+          start_date?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           archived_at?: string | null
           created_at?: string
           description?: string | null
+          end_date?: string | null
           id?: string
           metadata?: Json
           name?: string
           organization_id?: string
+          start_date?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: [

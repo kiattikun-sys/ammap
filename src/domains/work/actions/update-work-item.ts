@@ -83,7 +83,6 @@ export async function updateWorkItem(
     priority: row.priority as WorkPriority,
     assignedTo: (row.assigned_to as string | null) ?? null,
     dueDate: row.due_date ? new Date(row.due_date as string) : null,
-    progress: row.progress as number,
     progressPercent: (row.progress as number) ?? 0,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     createdAt: new Date(row.created_at as string),

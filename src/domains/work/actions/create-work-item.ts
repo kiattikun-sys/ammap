@@ -61,7 +61,6 @@ export async function createWorkItem(
     priority: row.priority as WorkItem["priority"],
     assignedTo: (row.assigned_to as string | null) ?? null,
     dueDate: row.due_date ? new Date(row.due_date as string) : null,
-    progress: prog,
     progressPercent: prog,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     createdAt: new Date(row.created_at as string),
