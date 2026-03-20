@@ -8,6 +8,7 @@ export interface SubmitRegistrationRequestInput {
   companyName?: string;
   phone?: string;
   requestedOrgName: string;
+  allowResubmit?: boolean;
 }
 
 const BLOCKED_STATUSES = ["pending", "approved", "invited", "activated"] as const;
@@ -18,19 +19,52 @@ const BLOCKED_STATUS_MESSAGES: Record<string, string> = {
   activated: "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ",
 };
 
+function validatePhone(phone: string): string | null {
+  const digits = phone.replace(/[\s\-().+]/g, "");
+  if (!/^0\d{8,9}$/.test(digits)) {
+    return "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 081-234-5678)";
+  }
+  return null;
+}
+
 export async function submitRegistrationRequest(
   input: SubmitRegistrationRequestInput
 ): Promise<{ id: string }> {
-  const { email, fullName, companyName, phone, requestedOrgName } = input;
+  const { email, fullName, companyName, phone, requestedOrgName, allowResubmit } = input;
 
   if (!email || !fullName || !requestedOrgName) {
     throw new Error("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
+  }
+
+  // Validate phone format (optional field)
+  if (phone?.trim()) {
+    const phoneError = validatePhone(phone.trim());
+    if (phoneError) throw new Error(phoneError);
   }
 
   // Normalize email at app layer (DB trigger also normalizes, defense-in-depth)
   const normalizedEmail = email.toLowerCase().trim();
 
   const db = createSupabaseAdmin() as any;
+
+  // Check if previously rejected — inform user and allow re-registration
+  if (!allowResubmit) {
+    const { data: rejectedReq } = await db
+      .from("registration_requests")
+      .select("id, notes")
+      .eq("email", normalizedEmail)
+      .eq("status", "rejected")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (rejectedReq) {
+      const reason = rejectedReq.notes?.trim()
+        ? `เหตุผล: ${rejectedReq.notes.trim()}`
+        : "";
+      throw new Error(`REJECTED:${reason}`);
+    }
+  }
 
   // Block duplicate submissions across all active lifecycle states
   const { data: existing } = await db
@@ -71,7 +105,7 @@ export async function submitRegistrationRequest(
       request_id: data.id,
       event_type: "submitted",
       performed_by: null,
-      metadata: { email: normalizedEmail },
+      metadata: { email: normalizedEmail, resubmit: allowResubmit ?? false },
     });
 
   return { id: data.id };

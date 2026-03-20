@@ -32,6 +32,14 @@ export default function SetPasswordPage() {
       setError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
       return;
     }
+    if (!/[A-Z]/.test(password)) {
+      setError("รหัสผ่านต้องมีตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว (A–Z)");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError("รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว (0–9)");
+      return;
+    }
     if (password !== confirm) {
       setError("รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง");
       return;
@@ -80,7 +88,7 @@ export default function SetPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="อย่างน้อย 8 ตัวอักษร"
+              placeholder="อย่างน้อย 8 ตัว มีตัวใหญ่และตัวเลข"
             />
           </div>
 
