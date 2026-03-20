@@ -46,7 +46,6 @@ export function spatialNodesToGeoJSON(
         color,
         lineWidth: TYPE_LINE_WIDTHS[node.type] ?? 2,
         fillOpacity: TYPE_FILL_OPACITY[node.type] ?? 0.15,
-        level: node.level,
         parentId: node.parentId,
         projectId: node.projectId,
       },
