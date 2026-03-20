@@ -10,7 +10,6 @@ export interface User {
 export interface UserProfile {
   userId: string;
   avatarUrl?: string;
-  phone?: string;
   organization?: string;
 }
 
