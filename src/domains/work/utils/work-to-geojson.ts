@@ -43,7 +43,7 @@ export function workItemsToGeoJSON(
         title: item.title,
         status: item.status,
         priority: item.priority,
-        progress: item.progress,
+        progress: item.progressPercent,
         assignedTo: item.assignedTo,
         spatialNodeId: item.spatialNodeId,
         color: STATUS_COLORS[item.status],
