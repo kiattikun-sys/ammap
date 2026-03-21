@@ -45,7 +45,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       {
         label: "Dashboard",
-        href: "/executive/dashboard" as Route,
+        href: "/executive-dashboard" as Route,
         icon: <BarChart3 size={16} />,
       },
     ],
@@ -55,7 +55,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       {
         label: "Dashboard",
-        href: "/field/dashboard" as Route,
+        href: "/field-dashboard" as Route,
         icon: <Hammer size={16} />,
       },
     ],
