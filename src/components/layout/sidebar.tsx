@@ -9,6 +9,7 @@ import {
   BarChart3,
   Hammer,
   ShieldCheck,
+  Users,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -45,7 +46,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       {
         label: "Dashboard",
-        href: "/executive/dashboard" as Route,
+        href: "/executive-dashboard" as Route,
         icon: <BarChart3 size={16} />,
       },
     ],
@@ -55,8 +56,18 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       {
         label: "Dashboard",
-        href: "/field/dashboard" as Route,
+        href: "/field-dashboard" as Route,
         icon: <Hammer size={16} />,
+      },
+    ],
+  },
+  {
+    title: "Organization",
+    items: [
+      {
+        label: "Members",
+        href: "/org/members" as Route,
+        icon: <Users size={16} />,
       },
     ],
   },
