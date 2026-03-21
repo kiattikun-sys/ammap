@@ -17,7 +17,7 @@ export function buildProgressSummaryPrompt(
   const taskSummary = workItems
     .map(
       (w) =>
-        `- [${w.status}] ${w.title} — ${w.progress}% complete (priority: ${w.priority}, zone: ${w.spatialNodeId ?? "unassigned"})`
+        `- [${w.status}] ${w.title} — ${w.progressPercent}% complete (priority: ${w.priority}, zone: ${w.spatialNodeId ?? "unassigned"})`
     )
     .join("\n");
 
