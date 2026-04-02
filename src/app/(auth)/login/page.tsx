@@ -33,7 +33,7 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">เข้าสู่ระบบ</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Sign In</h1>
         <p className="mt-1 text-sm text-slate-500">Access your construction platform</p>
       </div>
 
@@ -74,6 +74,12 @@ function LoginForm() {
           </div>
         )}
 
+        <div className="flex justify-end">
+          <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -84,9 +90,9 @@ function LoginForm() {
       </form>
 
       <p className="mt-6 text-center text-sm text-slate-500">
-        ยังไม่มีบัญชี?{" "}
+        Don&apos;t have an account?{" "}
         <Link href="/register" className="font-medium text-blue-600 hover:underline">
-          ขอใช้งานระบบ
+          Request access
         </Link>
       </p>
     </div>
