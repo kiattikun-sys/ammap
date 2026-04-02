@@ -3,6 +3,8 @@
 import { createSupabaseAdmin } from "@/lib/supabase/supabase-admin";
 import { assertPlatformAdmin } from "@/lib/platform/assert-platform-admin";
 
+const MAX_INVITE_ATTEMPTS = 5;
+
 async function sendInvite(
   _db: any,
   requestId: string,
@@ -181,6 +183,20 @@ export async function resendInvite(
 
   if (fetchError) throw new Error(fetchError.message);
   if (!request) throw new Error("Request not found or cannot be resent in its current state.");
+
+  // Enforce max retry limit
+  const { data: currentRow } = await db
+    .from("registration_requests")
+    .select("invite_attempts")
+    .eq("id", requestId)
+    .single();
+
+  const attempts: number = currentRow?.invite_attempts ?? 0;
+  if (attempts >= MAX_INVITE_ATTEMPTS) {
+    throw new Error(
+      `ส่งคำเชิญครบ ${MAX_INVITE_ATTEMPTS} ครั้งแล้ว กรุณาติดต่อทีม support เพื่อดำเนินการต่อ`
+    );
+  }
 
   await sendInvite(
     db,
